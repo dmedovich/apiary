@@ -220,9 +220,9 @@ func (b *Builder) buildOperation(
 				})
 			}
 
-			// For GET/DELETE the remaining fields become implicit query parameters.
-			// For POST/PUT/PATCH they go into the JSON request body.
-			if method == "GET" || method == "DELETE" {
+			// For GET the remaining fields become implicit query parameters.
+			// For POST/PUT/PATCH/DELETE they go into the JSON request body.
+			if method == "GET" {
 				for _, f := range bodyFields {
 					jsonName := f.JSONName
 					if jsonName == "" {
