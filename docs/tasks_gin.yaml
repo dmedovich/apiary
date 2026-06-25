@@ -5,8 +5,9 @@ info:
 paths:
     /api/v1/auth/login:
         post:
-            summary: Войти
-            description: Возвращает JWT по логину и паролю.
+            operationId: login
+            summary: Log in
+            description: Returns a JWT for a username and password.
             tags:
                 - auth
             security: []
@@ -43,7 +44,8 @@ paths:
                                 $ref: '#/components/schemas/ErrorResponse'
     /api/v1/auth/refresh:
         post:
-            summary: Обновить токен
+            operationId: refresh
+            summary: Refresh token
             tags:
                 - auth
             security:
@@ -76,8 +78,9 @@ paths:
                                 $ref: '#/components/schemas/ErrorResponse'
     /api/v1/tasks:
         get:
-            summary: Список задач
-            description: Поддерживает фильтрацию по статусу и приоритету, пагинацию.
+            operationId: listTasks
+            summary: List tasks
+            description: Supports filtering by status and priority, and pagination.
             tags:
                 - tasks
             parameters:
@@ -101,14 +104,16 @@ paths:
                   schema:
                     type: integer
                     format: int32
-                  example: "1"
+                    default: 1
+                  example: 1
                 - name: page_size
                   in: query
                   required: false
                   schema:
                     type: integer
                     format: int32
-                  example: "20"
+                    default: 20
+                  example: 20
             responses:
                 "200":
                     description: OK
@@ -135,7 +140,8 @@ paths:
                             schema:
                                 $ref: '#/components/schemas/ErrorResponse'
         post:
-            summary: Создать задачу
+            operationId: createTask
+            summary: Create task
             tags:
                 - tasks
             requestBody:
@@ -177,7 +183,8 @@ paths:
                                 $ref: '#/components/schemas/ErrorResponse'
     /api/v1/tasks/{id}:
         get:
-            summary: Задача по ID
+            operationId: getTask
+            summary: Get task by ID
             tags:
                 - tasks
             parameters:
@@ -187,7 +194,7 @@ paths:
                   schema:
                     type: integer
                     format: int64
-                  example: "42"
+                  example: 42
             responses:
                 "200":
                     description: OK
@@ -214,7 +221,8 @@ paths:
                             schema:
                                 $ref: '#/components/schemas/ErrorResponse'
         put:
-            summary: Обновить задачу
+            operationId: updateTask
+            summary: Update task
             tags:
                 - tasks
             parameters:
@@ -274,8 +282,9 @@ paths:
                             schema:
                                 $ref: '#/components/schemas/ErrorResponse'
         delete:
-            summary: Удалить задачу
-            description: Только создатель задачи или администратор.
+            operationId: deleteTask
+            summary: Delete task
+            description: Only the task creator or an administrator.
             tags:
                 - tasks
             parameters:
@@ -285,7 +294,7 @@ paths:
                   schema:
                     type: integer
                     format: int64
-                  example: "42"
+                  example: 42
             responses:
                 "200":
                     description: OK
@@ -319,7 +328,8 @@ paths:
                                 $ref: '#/components/schemas/ErrorResponse'
     /api/v1/tasks/{task_id}/comments:
         get:
-            summary: Комментарии к задаче
+            operationId: listComments
+            summary: List task comments
             tags:
                 - comments
             parameters:
@@ -329,7 +339,7 @@ paths:
                   schema:
                     type: integer
                     format: int64
-                  example: "42"
+                  example: 42
             responses:
                 "200":
                     description: OK
@@ -356,7 +366,8 @@ paths:
                             schema:
                                 $ref: '#/components/schemas/ErrorResponse'
         post:
-            summary: Добавить комментарий
+            operationId: addComment
+            summary: Add comment
             tags:
                 - comments
             parameters:
@@ -366,7 +377,7 @@ paths:
                   schema:
                     type: integer
                     format: int64
-                  example: "42"
+                  example: 42
             requestBody:
                 required: true
                 content:
@@ -413,7 +424,7 @@ components:
             properties:
                 body:
                     type: string
-                    example: 'Смотрел логи — это регрессия из #1337'
+                    example: 'Checked the logs, this is a regression from #1337'
             required:
                 - body
         CommentDTO:
@@ -440,15 +451,15 @@ components:
                     format: int64
                 description:
                     type: string
-                    example: кафка балуется
+                    example: Kafka is acting up
                 priority:
                     type: integer
                     format: int32
                     description: 1-3
-                    example: "3"
+                    example: 3
                 title:
                     type: string
-                    example: Упал прод
+                    example: Production is down
             required:
                 - title
         DeleteTaskResponse:
@@ -498,7 +509,7 @@ components:
             properties:
                 password:
                     type: string
-                    example: nosomword
+                    example: s3cret
                 username:
                     type: string
                     example: larry
@@ -511,14 +522,16 @@ components:
                 expires_in:
                     type: integer
                     format: int32
-                    example: "3600"
+                    example: 3600
                 token:
                     type: string
         TaskDTO:
             type: object
             properties:
                 assigned_to:
-                    $ref: '#/components/schemas/UserBrief'
+                    anyOf:
+                        - $ref: '#/components/schemas/UserBrief'
+                        - type: "null"
                 created_at:
                     type: string
                     format: date-time
@@ -530,7 +543,7 @@ components:
                 priority:
                     type: integer
                     format: int32
-                    description: 1 — низкий, 3 — высокий
+                    description: 1 = low, 3 = high
                 status:
                     type: string
                     description: todo | in_progress | done
@@ -568,4 +581,4 @@ components:
             type: http
             scheme: bearer
             bearerFormat: JWT
-            description: 'JWT Bearer token — pass as: Authorization: Bearer <token>'
+            description: 'JWT Bearer token, pass as: Authorization: Bearer <token>'

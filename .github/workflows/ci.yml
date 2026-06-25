@@ -40,8 +40,16 @@ jobs:
       - name: Build
         run: go build ./...
 
-      - name: Test
+      # The race detector needs the external (cgo) linker. On recent macOS
+      # runners that produces a test binary dyld rejects ("missing LC_UUID"),
+      # so run -race only on Linux and plain tests elsewhere.
+      - name: Test (race detector, Linux)
+        if: runner.os == 'Linux'
         run: go test -race -covermode=atomic -coverprofile=coverage.out ./...
+
+      - name: Test (macOS, Windows)
+        if: runner.os != 'Linux'
+        run: go test ./...
 
       - name: Upload coverage
         if: matrix.os == 'ubuntu-latest' && matrix.go == '1.23'
@@ -81,7 +89,7 @@ jobs:
           args: --timeout=5m
 
   generate:
-    name: spec generation smoke test
+    name: spec generation, freshness & validity
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -94,6 +102,16 @@ jobs:
 
       - name: Generate sample specs
         run: make generate
+
+      - name: Fail if committed docs are stale
+        run: git diff --exit-code docs/ || (echo "::error::docs/ are out of date; run 'make generate' and commit" && exit 1)
+
+      - name: Validate generated specs against OpenAPI 3.1
+        run: |
+          for spec in docs/*.yaml; do
+            echo "linting $spec"
+            npx --yes @redocly/cli@latest lint "$spec"
+          done
 
       - name: Upload generated specs
         uses: actions/upload-artifact@v4

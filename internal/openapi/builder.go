@@ -5,17 +5,16 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/honeynil/apiary/internal/parser"
-	"github.com/honeynil/apiary/internal/schema"
+	"github.com/yaop-labs/apiary/internal/parser"
+	"github.com/yaop-labs/apiary/internal/schema"
 )
 
-// builtinSchemes maps short names to their SecurityScheme definitions.
 var builtinSchemes = map[string]*SecurityScheme{
 	"bearer": {
 		Type:         "http",
 		Scheme:       "bearer",
 		BearerFormat: "JWT",
-		Description:  "JWT Bearer token — pass as: Authorization: Bearer <token>",
+		Description:  "JWT Bearer token, pass as: Authorization: Bearer <token>",
 	},
 	"basic": {
 		Type:        "http",
@@ -31,15 +30,15 @@ var builtinSchemes = map[string]*SecurityScheme{
 }
 
 type securityEntry struct {
-	name    string // key used in the document (like "adminAuth")
-	builtin string // builtin type: "bearer", "basic", "apikey"
+	name    string
+	builtin string
 }
 
-// Builder assembles an OpenAPI 3.1 document from parsed operations.
 type Builder struct {
 	title       string
 	version     string
 	description string
+	servers     []Server
 	security    []securityEntry
 }
 
@@ -49,6 +48,13 @@ func NewBuilder(title, version string) *Builder {
 
 func (b *Builder) WithDescription(desc string) *Builder {
 	b.description = desc
+	return b
+}
+
+func (b *Builder) WithServer(url string) *Builder {
+	if url != "" {
+		b.servers = append(b.servers, Server{URL: url})
+	}
 	return b
 }
 
@@ -72,39 +78,56 @@ func (b *Builder) Build(operations []*parser.OperationInfo, types map[string]*pa
 	spec := &OpenAPI{
 		OpenAPI: "3.1.0",
 		Info:    Info{Title: b.title, Version: b.version, Description: b.description},
+		Servers: b.servers,
 		Paths:   make(map[string]PathItem),
 	}
 
+	seenOpID := make(map[string]string)
 	for _, opInfo := range operations {
 		op, err := b.buildOperation(opInfo, sb, types)
 		if err != nil {
 			return nil, err
 		}
-		item := spec.Paths[opInfo.Annotation.Path]
-		switch strings.ToUpper(opInfo.Annotation.Method) {
-		case "GET":
-			item.Get = op
-		case "POST":
-			item.Post = op
-		case "PUT":
-			item.Put = op
-		case "DELETE":
-			item.Delete = op
-		case "PATCH":
-			item.Patch = op
+		path := opInfo.Annotation.Path
+		method := strings.ToUpper(opInfo.Annotation.Method)
+		if op.OperationID != "" {
+			if first, dup := seenOpID[op.OperationID]; dup {
+				log.Printf("apiary: warning: duplicate operationId %q (first at %s, again at %s %s); set an explicit `operationId:` to disambiguate",
+					op.OperationID, first, method, path)
+			} else {
+				seenOpID[op.OperationID] = method + " " + path
+			}
 		}
-		spec.Paths[opInfo.Annotation.Path] = item
+		item := spec.Paths[path]
+		var slot **Operation
+		switch method {
+		case "GET":
+			slot = &item.Get
+		case "POST":
+			slot = &item.Post
+		case "PUT":
+			slot = &item.Put
+		case "DELETE":
+			slot = &item.Delete
+		case "PATCH":
+			slot = &item.Patch
+		default:
+			log.Printf("apiary: warning: unsupported HTTP method %q for %s; operation skipped (supported: GET, POST, PUT, DELETE, PATCH)", method, path)
+			continue
+		}
+		if *slot != nil {
+			log.Printf("apiary: warning: duplicate operation %s %s; overwriting previous definition", method, path)
+		}
+		*slot = op
+		spec.Paths[path] = item
 	}
 
-	// Build components
 	components := &Components{Schemas: sb.Components()}
 
-	// Warn about cross-package types that were not resolved.
 	for _, unknown := range sb.UnknownTypes() {
-		log.Printf("apiary: warning: type %q not found — add its package to the scan pattern", unknown)
+		log.Printf("apiary: warning: type %q not found; add its package to the scan pattern", unknown)
 	}
 
-	// Register security schemes.
 	if len(b.security) > 0 {
 		components.SecuritySchemes = make(map[string]*SecurityScheme)
 		var globalReqs []SecurityRequirement
@@ -128,7 +151,6 @@ func (b *Builder) Build(operations []*parser.OperationInfo, types map[string]*pa
 	return spec, nil
 }
 
-// buildOperation converts a single OperationInfo into an OpenAPI Operation.
 func (b *Builder) buildOperation(
 	opInfo *parser.OperationInfo,
 	sb *schema.Builder,
@@ -138,38 +160,34 @@ func (b *Builder) buildOperation(
 	method := strings.ToUpper(ann.Method)
 
 	op := &Operation{
+		OperationID: ann.OperationID,
 		Summary:     ann.Summary,
 		Description: ann.Description,
 		Tags:        ann.Tags,
 		Responses:   make(map[string]*Response),
 	}
 
-	// Per-operation security override.
-	if len(ann.Security) > 0 {
-		if len(ann.Security) == 1 && strings.ToLower(ann.Security[0]) == "none" {
-			// Explicitly opt out of global security for this endpoint.
-			op.Security = []SecurityRequirement{}
-		} else {
-			reqs := make([]SecurityRequirement, 0, len(ann.Security))
-			for _, s := range ann.Security {
-				reqs = append(reqs, SecurityRequirement{s: {}})
-			}
-			op.Security = reqs
-		}
+	if sec := operationSecurity(ann.Security); sec != nil {
+		op.Security = sec
 	}
 
-	if opInfo.RequestType != nil {
-		reqRef := opInfo.RequestType
-
+	if reqRef := opInfo.RequestType; reqRef != nil {
 		if reqRef.IsSlice || reqRef.IsMap {
-			op.RequestBody = &RequestBody{
-				Required: true,
-				Content: map[string]*MediaType{
-					"application/json": {Schema: sb.BuildSchema(reqRef)},
-				},
-			}
+			op.RequestBody = jsonBody(sb.BuildSchema(reqRef))
 		} else {
 			typeInfo := types[reqRef.Name]
+
+			addParam := func(name, in string, required bool, f *parser.FieldInfo) {
+				sch := sb.BuildParamSchema(f)
+				op.Parameters = append(op.Parameters, Parameter{
+					Name:        name,
+					In:          in,
+					Description: f.Doc,
+					Required:    required,
+					Schema:      sch,
+					Example:     schema.CoerceScalar(f.Example, sch.Type),
+				})
+			}
 
 			var pathFields, queryFields, headerFields, bodyFields []*parser.FieldInfo
 			if typeInfo != nil {
@@ -188,71 +206,21 @@ func (b *Builder) buildOperation(
 			}
 
 			for _, f := range pathFields {
-				op.Parameters = append(op.Parameters, Parameter{
-					Name:        f.PathParam,
-					In:          "path",
-					Description: f.Doc,
-					Required:    true,
-					Schema:      sb.BuildSchema(f.Type),
-					Example:     nilIfEmpty(f.Example),
-				})
+				addParam(f.PathParam, "path", true, f)
 			}
-
 			for _, f := range headerFields {
-				op.Parameters = append(op.Parameters, Parameter{
-					Name:        f.Header,
-					In:          "header",
-					Description: f.Doc,
-					Required:    f.Required,
-					Schema:      sb.BuildSchema(f.Type),
-					Example:     nilIfEmpty(f.Example),
-				})
+				addParam(f.Header, "header", f.Required, f)
 			}
-
 			for _, f := range queryFields {
-				op.Parameters = append(op.Parameters, Parameter{
-					Name:        f.QueryParam,
-					In:          "query",
-					Description: f.Doc,
-					Required:    f.Required,
-					Schema:      sb.BuildSchema(f.Type),
-					Example:     nilIfEmpty(f.Example),
-				})
+				addParam(f.QueryParam, "query", f.Required, f)
 			}
 
-			// For GET the remaining fields become implicit query parameters.
-			// For POST/PUT/PATCH/DELETE they go into the JSON request body.
 			if method == "GET" {
 				for _, f := range bodyFields {
-					jsonName := f.JSONName
-					if jsonName == "" {
-						jsonName = strings.ToLower(f.Name[:1]) + f.Name[1:]
-					}
-					op.Parameters = append(op.Parameters, Parameter{
-						Name:        jsonName,
-						In:          "query",
-						Description: f.Doc,
-						Required:    f.Required,
-						Schema:      sb.BuildSchema(f.Type),
-						Example:     nilIfEmpty(f.Example),
-					})
+					addParam(f.JSONName, "query", f.Required, f)
 				}
-			} else if len(bodyFields) > 0 || (typeInfo != nil && len(typeInfo.Fields) == len(pathFields)) {
-				op.RequestBody = &RequestBody{
-					Required: true,
-					Content: map[string]*MediaType{
-						"application/json": {Schema: sb.BuildSchema(reqRef)},
-					},
-				}
-			} else if len(bodyFields) == 0 && typeInfo != nil {
-				// POST/PUT/PATCH with no body fields (all are path/query params) — skip body.
-			} else {
-				op.RequestBody = &RequestBody{
-					Required: true,
-					Content: map[string]*MediaType{
-						"application/json": {Schema: sb.BuildSchema(reqRef)},
-					},
-				}
+			} else if needsRequestBody(typeInfo, len(bodyFields)) {
+				op.RequestBody = jsonBody(sb.BuildSchema(reqRef))
 			}
 		}
 	}
@@ -260,9 +228,7 @@ func (b *Builder) buildOperation(
 	if opInfo.ResponseType != nil {
 		op.Responses["200"] = &Response{
 			Description: "OK",
-			Content: map[string]*MediaType{
-				"application/json": {Schema: sb.BuildSchema(opInfo.ResponseType)},
-			},
+			Content:     jsonContent(sb.BuildSchema(opInfo.ResponseType)),
 		}
 	} else {
 		op.Responses["200"] = &Response{Description: "OK"}
@@ -276,39 +242,55 @@ func (b *Builder) buildOperation(
 		}
 		op.Responses[strconv.Itoa(errSpec.Code)] = &Response{
 			Description: httpStatusText(errSpec.Code),
-			Content: map[string]*MediaType{
-				"application/json": {
-					Schema: &schema.Schema{Ref: schemaRef},
-				},
-			},
+			Content:     jsonContent(&schema.Schema{Ref: schemaRef}),
 		}
 	}
 
 	return op, nil
 }
 
-func nilIfEmpty(s string) any {
-	if s == "" {
+func operationSecurity(security []string) any {
+	if len(security) == 0 {
 		return nil
 	}
-	return s
+	if len(security) == 1 && strings.ToLower(security[0]) == "none" {
+		return []SecurityRequirement{}
+	}
+	reqs := make([]SecurityRequirement, 0, len(security))
+	for _, s := range security {
+		reqs = append(reqs, SecurityRequirement{s: {}})
+	}
+	return reqs
+}
+
+func needsRequestBody(typeInfo *parser.TypeInfo, bodyFieldCount int) bool {
+	return bodyFieldCount > 0 || typeInfo == nil
+}
+
+func jsonContent(s *schema.Schema) map[string]*MediaType {
+	return map[string]*MediaType{"application/json": {Schema: s}}
+}
+
+func jsonBody(s *schema.Schema) *RequestBody {
+	return &RequestBody{Required: true, Content: jsonContent(s)}
+}
+
+var httpStatusTexts = map[int]string{
+	400: "Bad Request",
+	401: "Unauthorized",
+	403: "Forbidden",
+	404: "Not Found",
+	405: "Method Not Allowed",
+	409: "Conflict",
+	422: "Unprocessable Entity",
+	429: "Too Many Requests",
+	500: "Internal Server Error",
+	502: "Bad Gateway",
+	503: "Service Unavailable",
 }
 
 func httpStatusText(code int) string {
-	texts := map[int]string{
-		400: "Bad Request",
-		401: "Unauthorized",
-		403: "Forbidden",
-		404: "Not Found",
-		405: "Method Not Allowed",
-		409: "Conflict",
-		422: "Unprocessable Entity",
-		429: "Too Many Requests",
-		500: "Internal Server Error",
-		502: "Bad Gateway",
-		503: "Service Unavailable",
-	}
-	if t, ok := texts[code]; ok {
+	if t, ok := httpStatusTexts[code]; ok {
 		return t
 	}
 	return "Error"

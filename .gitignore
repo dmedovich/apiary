@@ -2,3 +2,13 @@
 .vscode
 .DS_Store
 __MACOSX/
+
+# build output
+/bin/
+/dist/
+
+# docs site (Docusaurus)
+/website/node_modules/
+/website/build/
+/website/.docusaurus/
+/website/static/openapi/

@@ -1,4 +1,4 @@
-// Package sample показывает как аннотировать хендлеры для apiary.
+// Package sample shows how to annotate handlers for apiary.
 //
 //	apiary -security bearer -title "Sample API" -version "0.1.0" -out docs/sample.yaml ./testdata/sample
 package sample
@@ -11,8 +11,8 @@ type ProductHandler struct{}
 type HealthHandler struct{}
 
 // apiary:operation POST /api/v1/auth/telegram
-// summary: Аутентификация через Telegram
-// description: Принимает initData из Telegram WebApp, верифицирует HMAC-SHA256 подпись.
+// summary: Authenticate via Telegram
+// description: Accepts initData from the Telegram WebApp and verifies the HMAC-SHA256 signature.
 // tags: auth
 // security: none
 // errors: 400,401,500
@@ -21,7 +21,7 @@ func (h *AuthHandler) TelegramAuth(ctx context.Context, req TelegramAuthRequest)
 }
 
 // apiary:operation GET /api/v1/users/{id}
-// summary: Профиль пользователя
+// summary: Get user profile
 // tags: users
 // errors: 401,403,404,500
 func (h *UserHandler) GetUser(ctx context.Context, req GetUserRequest) (UserResponse, error) {
@@ -29,7 +29,7 @@ func (h *UserHandler) GetUser(ctx context.Context, req GetUserRequest) (UserResp
 }
 
 // apiary:operation POST /api/v1/users
-// summary: Создать пользователя
+// summary: Create user
 // tags: users
 // errors: 400,409,500
 func (h *UserHandler) CreateUser(ctx context.Context, req CreateUserRequest) (UserResponse, error) {
@@ -37,8 +37,8 @@ func (h *UserHandler) CreateUser(ctx context.Context, req CreateUserRequest) (Us
 }
 
 // apiary:operation GET /api/v1/products
-// summary: Список товаров
-// description: Поддерживает пагинацию и полнотекстовый поиск. Цены возвращаются в валюте из заголовка X-Currency.
+// summary: List products
+// description: Supports pagination and full-text search. Prices are returned in the currency from the X-Currency header.
 // tags: products
 // errors: 400,500
 func (h *ProductHandler) ListProducts(ctx context.Context, req ListProductsRequest) (ListProductsResponse, error) {
@@ -46,7 +46,7 @@ func (h *ProductHandler) ListProducts(ctx context.Context, req ListProductsReque
 }
 
 // apiary:operation GET /health
-// summary: Healthcheck
+// summary: Health check
 // tags: infra
 // security: none
 func (h *HealthHandler) Health(req HealthRequest) (HealthResponse, error) {

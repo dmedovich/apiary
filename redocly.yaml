@@ -1,0 +1,6 @@
+# Used by CI to validate generated specs for OpenAPI 3.1 structural correctness.
+# The `minimal` ruleset checks spec compliance (the `struct` rule) without
+# enforcing Redocly's opinionated style rules (servers/security/license
+# required, etc.) on example specs.
+extends:
+  - minimal

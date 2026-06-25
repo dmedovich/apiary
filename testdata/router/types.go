@@ -7,7 +7,7 @@ type TaskDTO struct {
 	Title       string     `json:"title"`
 	Description string     `json:"description"`
 	Status      string     `json:"status"      doc:"todo | in_progress | done"`
-	Priority    int        `json:"priority"    doc:"1 — низкий, 3 — высокий"`
+	Priority    int        `json:"priority"    doc:"1 = low, 3 = high"`
 	AssignedTo  *UserBrief `json:"assigned_to"`
 	CreatedAt   time.Time  `json:"created_at"`
 	UpdatedAt   time.Time  `json:"updated_at"`
@@ -28,11 +28,11 @@ type CommentDTO struct {
 
 type LoginRequest struct {
 	Username string `json:"username" validate:"required" example:"larry"`
-	Password string `json:"password" validate:"required" example:"nosomword"`
+	Password string `json:"password" validate:"required" example:"s3cret"`
 }
 
 type RefreshRequest struct {
-	Token string `header:"Authorization" validate:"required" doc:"Bearer <токен>"`
+	Token string `header:"Authorization" validate:"required" doc:"Bearer <token>"`
 }
 
 type LoginResponse struct {
@@ -59,8 +59,8 @@ type GetTaskRequest struct {
 }
 
 type CreateTaskRequest struct {
-	Title       string `json:"title"       validate:"required" example:"Упал прод"`
-	Description string `json:"description" example:"OOM killer убил сервис около 03:00"`
+	Title       string `json:"title"       validate:"required" example:"Production is down"`
+	Description string `json:"description" example:"OOM killer terminated the service around 03:00"`
 	Priority    int    `json:"priority"    doc:"1-3" example:"3"`
 	AssigneeID  int64  `json:"assignee_id"`
 }
@@ -94,5 +94,5 @@ type ListCommentsResponse struct {
 
 type AddCommentRequest struct {
 	TaskID int64  `path:"task_id" validate:"required" example:"42"`
-	Body   string `json:"body"    validate:"required" example:"Смотрел логи — это регрессия из #1337"`
+	Body   string `json:"body"    validate:"required" example:"Checked the logs, this is a regression from #1337"`
 }

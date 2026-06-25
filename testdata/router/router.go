@@ -1,4 +1,4 @@
-// Package router — пример task-manager сервиса с аннотациями apiary.
+// Package router is an example task-manager service annotated for apiary.
 //
 //	apiary -security bearer -title "Task Manager API" -version "1.0.0" -out docs/tasks.yaml ./testdata/router
 package router
@@ -10,8 +10,8 @@ type TaskHandler struct{}
 type CommentHandler struct{}
 
 // apiary:operation POST /api/v1/auth/login
-// summary: Войти
-// description: Возвращает JWT по логину и паролю.
+// summary: Log in
+// description: Returns a JWT for a username and password.
 // tags: auth
 // security: none
 // errors: 400,401,500
@@ -20,7 +20,7 @@ func (h *AuthHandler) Login(ctx context.Context, req LoginRequest) (LoginRespons
 }
 
 // apiary:operation POST /api/v1/auth/refresh
-// summary: Обновить токен
+// summary: Refresh token
 // tags: auth
 // security: bearer
 // errors: 401,500
@@ -29,8 +29,8 @@ func (h *AuthHandler) Refresh(ctx context.Context, req RefreshRequest) (LoginRes
 }
 
 // apiary:operation GET /api/v1/tasks
-// summary: Список задач
-// description: Поддерживает фильтрацию по статусу и приоритету, пагинацию.
+// summary: List tasks
+// description: Supports filtering by status and priority, and pagination.
 // tags: tasks
 // errors: 400,401,500
 func (h *TaskHandler) List(ctx context.Context, req ListTasksRequest) (ListTasksResponse, error) {
@@ -38,7 +38,7 @@ func (h *TaskHandler) List(ctx context.Context, req ListTasksRequest) (ListTasks
 }
 
 // apiary:operation GET /api/v1/tasks/{id}
-// summary: Задача по ID
+// summary: Get task by ID
 // tags: tasks
 // errors: 401,404,500
 func (h *TaskHandler) Get(ctx context.Context, req GetTaskRequest) (TaskDTO, error) {
@@ -46,7 +46,7 @@ func (h *TaskHandler) Get(ctx context.Context, req GetTaskRequest) (TaskDTO, err
 }
 
 // apiary:operation POST /api/v1/tasks
-// summary: Создать задачу
+// summary: Create task
 // tags: tasks
 // errors: 400,401,422,500
 func (h *TaskHandler) Create(ctx context.Context, req CreateTaskRequest) (TaskDTO, error) {
@@ -54,7 +54,7 @@ func (h *TaskHandler) Create(ctx context.Context, req CreateTaskRequest) (TaskDT
 }
 
 // apiary:operation PUT /api/v1/tasks/{id}
-// summary: Обновить задачу
+// summary: Update task
 // tags: tasks
 // errors: 400,401,403,404,422,500
 func (h *TaskHandler) Update(ctx context.Context, req UpdateTaskRequest) (TaskDTO, error) {
@@ -62,8 +62,8 @@ func (h *TaskHandler) Update(ctx context.Context, req UpdateTaskRequest) (TaskDT
 }
 
 // apiary:operation DELETE /api/v1/tasks/{id}
-// summary: Удалить задачу
-// description: Только создатель задачи или администратор.
+// summary: Delete task
+// description: Only the task creator or an administrator.
 // tags: tasks
 // errors: 401,403,404,500
 func (h *TaskHandler) Delete(ctx context.Context, req DeleteTaskRequest) (DeleteTaskResponse, error) {
@@ -71,7 +71,7 @@ func (h *TaskHandler) Delete(ctx context.Context, req DeleteTaskRequest) (Delete
 }
 
 // apiary:operation GET /api/v1/tasks/{task_id}/comments
-// summary: Комментарии к задаче
+// summary: List task comments
 // tags: comments
 // errors: 401,404,500
 func (h *CommentHandler) List(ctx context.Context, req ListCommentsRequest) (ListCommentsResponse, error) {
@@ -79,7 +79,7 @@ func (h *CommentHandler) List(ctx context.Context, req ListCommentsRequest) (Lis
 }
 
 // apiary:operation POST /api/v1/tasks/{task_id}/comments
-// summary: Добавить комментарий
+// summary: Add comment
 // tags: comments
 // errors: 400,401,404,500
 func (h *CommentHandler) Add(ctx context.Context, req AddCommentRequest) (CommentDTO, error) {

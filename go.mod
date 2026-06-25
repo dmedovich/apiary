@@ -1,5 +1,13 @@
-module github.com/honeynil/apiary
+module github.com/yaop-labs/apiary
 
-go 1.22
+go 1.22.0
 
-require gopkg.in/yaml.v3 v3.0.1
+require (
+	golang.org/x/tools v0.26.0
+	gopkg.in/yaml.v3 v3.0.1
+)
+
+require (
+	golang.org/x/mod v0.21.0 // indirect
+	golang.org/x/sync v0.8.0 // indirect
+)

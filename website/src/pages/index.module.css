@@ -1,0 +1,95 @@
+.hero {
+  padding: 5rem 0 4rem;
+  background:
+    radial-gradient(1200px 400px at 80% -10%, rgba(0, 173, 216, 0.18), transparent 60%),
+    radial-gradient(900px 360px at 0% 0%, rgba(0, 131, 143, 0.14), transparent 55%);
+  border-bottom: 1px solid var(--ifm-toc-border-color);
+}
+
+.heroGrid {
+  display: grid;
+  grid-template-columns: 1.05fr 1fr;
+  gap: 2.5rem;
+  align-items: center;
+}
+
+.heroTitle {
+  font-size: 4rem;
+  line-height: 1;
+  margin: 0 0 0.75rem;
+  letter-spacing: -0.03em;
+}
+
+.heroTagline {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin: 0 0 0.75rem;
+  color: var(--ifm-color-primary);
+}
+
+.heroSub {
+  font-size: 1.15rem;
+  color: var(--ifm-color-emphasis-700);
+  margin: 0 0 2rem;
+  max-width: 36rem;
+}
+
+.buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.heroCode {
+  min-width: 0;
+}
+
+.heroCode :global(.theme-code-block) {
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.18);
+}
+
+.features {
+  padding: 4rem 0 5rem;
+}
+
+.featureGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.25rem;
+}
+
+.card {
+  border: 1px solid var(--ifm-toc-border-color);
+  border-radius: 12px;
+  padding: 1.5rem;
+  background: var(--ifm-background-surface-color);
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+
+.card:hover {
+  transform: translateY(-3px);
+  border-color: var(--ifm-color-primary);
+}
+
+.cardTitle {
+  font-size: 1.15rem;
+  margin: 0 0 0.5rem;
+}
+
+.cardBody {
+  margin: 0;
+  color: var(--ifm-color-emphasis-700);
+  font-size: 0.97rem;
+}
+
+@media (max-width: 996px) {
+  .heroGrid {
+    grid-template-columns: 1fr;
+  }
+  .heroTitle {
+    font-size: 3rem;
+  }
+  .featureGrid {
+    grid-template-columns: 1fr;
+  }
+}

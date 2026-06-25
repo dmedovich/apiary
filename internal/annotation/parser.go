@@ -1,4 +1,3 @@
-// Package annotation parses apiary marker comments from Go source files.
 package annotation
 
 import (
@@ -6,36 +5,40 @@ import (
 	"strings"
 )
 
-// ErrorSpec describes a single error response: a status code and an optional
-// custom response schema. When Schema is empty, the shared ErrorResponse schema
-// is used.
 type ErrorSpec struct {
 	Code   int
-	Schema string // optional custom type name, e.g. "ValidationError"
+	Schema string
 }
 
-// Operation holds the parsed metadata for a single API operation.
 type Operation struct {
 	Method      string
 	Path        string
+	OperationID string
 	Summary     string
 	Description string
 	Tags        []string
 	Errors      []ErrorSpec
-	// Security lists the scheme names that protect this operation.
-	// A single element "none" means explicitly no security (overrides global).
-	// Nil means "inherit global security".
+
 	Security []string
-	// Request and Response are explicit type names from annotations.
-	// Used when the handler signature does not carry type information (e.g. gin).
-	// Supports plain names ("UserDTO") and slice syntax ("[]UserDTO").
+
 	Request  string
 	Response string
+
+	Warnings []string
 }
 
-// Parse parses comment lines (without the "//" prefix and leading space) into
-// an Operation. The slice must contain a line starting with "apiary:operation".
-// Returns false if no such marker is found.
+func looksLikeKey(s string) bool {
+	if s == "" {
+		return false
+	}
+	for _, r := range s {
+		if r < 'a' || r > 'z' {
+			return false
+		}
+	}
+	return true
+}
+
 func Parse(lines []string) (*Operation, bool) {
 	op := &Operation{}
 	found := false
@@ -43,8 +46,7 @@ func Parse(lines []string) (*Operation, bool) {
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
 
-		if strings.HasPrefix(line, "apiary:operation ") {
-			rest := strings.TrimPrefix(line, "apiary:operation ")
+		if rest, ok := strings.CutPrefix(line, "apiary:operation "); ok {
 			parts := strings.Fields(rest)
 			if len(parts) < 2 {
 				continue
@@ -64,6 +66,8 @@ func Parse(lines []string) (*Operation, bool) {
 		value := strings.TrimSpace(line[idx+1:])
 
 		switch key {
+		case "operationId":
+			op.OperationID = value
 		case "summary":
 			op.Summary = value
 		case "description":
@@ -103,6 +107,12 @@ func Parse(lines []string) (*Operation, bool) {
 			op.Request = value
 		case "response":
 			op.Response = value
+		default:
+
+			if looksLikeKey(key) {
+				op.Warnings = append(op.Warnings,
+					"unknown annotation key \""+key+"\"; ignored (did you mean one of summary, description, tags, errors, security, request, response?)")
+			}
 		}
 	}
 

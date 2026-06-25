@@ -1,17 +1,16 @@
-//go:build ignore
-
-// Package gin — пример того же task-manager, но с gin-хендлерами.
+// Package gin is the same task-manager example, but with gin handlers.
 //
-// Запуск:
+// It is a separate nested module (its own go.mod) so the real gin dependency
+// stays out of the main apiary module. Generate the spec with:
 //
-//	apiary -security bearer -title "Task Manager API (gin)" -version "1.0.0" -out docs/tasks_gin.yaml ./testdata/gin
+//	cd testdata/gin && apiary -security bearer -title "Task Manager API (gin)" -version "1.0.0" -out ../../docs/tasks_gin.yaml .
 package gin
 
 import "github.com/gin-gonic/gin"
 
 // apiary:operation POST /api/v1/auth/login
-// summary: Войти
-// description: Возвращает JWT по логину и паролю.
+// summary: Log in
+// description: Returns a JWT for a username and password.
 // tags: auth
 // security: none
 // request: LoginRequest
@@ -20,7 +19,7 @@ import "github.com/gin-gonic/gin"
 func Login(c *gin.Context) {}
 
 // apiary:operation POST /api/v1/auth/refresh
-// summary: Обновить токен
+// summary: Refresh token
 // tags: auth
 // security: bearer
 // request: RefreshRequest
@@ -29,8 +28,8 @@ func Login(c *gin.Context) {}
 func Refresh(c *gin.Context) {}
 
 // apiary:operation GET /api/v1/tasks
-// summary: Список задач
-// description: Поддерживает фильтрацию по статусу и приоритету, пагинацию.
+// summary: List tasks
+// description: Supports filtering by status and priority, and pagination.
 // tags: tasks
 // request: ListTasksRequest
 // response: ListTasksResponse
@@ -38,7 +37,7 @@ func Refresh(c *gin.Context) {}
 func ListTasks(c *gin.Context) {}
 
 // apiary:operation GET /api/v1/tasks/{id}
-// summary: Задача по ID
+// summary: Get task by ID
 // tags: tasks
 // request: GetTaskRequest
 // response: TaskDTO
@@ -46,7 +45,7 @@ func ListTasks(c *gin.Context) {}
 func GetTask(c *gin.Context) {}
 
 // apiary:operation POST /api/v1/tasks
-// summary: Создать задачу
+// summary: Create task
 // tags: tasks
 // request: CreateTaskRequest
 // response: TaskDTO
@@ -54,7 +53,7 @@ func GetTask(c *gin.Context) {}
 func CreateTask(c *gin.Context) {}
 
 // apiary:operation PUT /api/v1/tasks/{id}
-// summary: Обновить задачу
+// summary: Update task
 // tags: tasks
 // request: UpdateTaskRequest
 // response: TaskDTO
@@ -62,8 +61,8 @@ func CreateTask(c *gin.Context) {}
 func UpdateTask(c *gin.Context) {}
 
 // apiary:operation DELETE /api/v1/tasks/{id}
-// summary: Удалить задачу
-// description: Только создатель задачи или администратор.
+// summary: Delete task
+// description: Only the task creator or an administrator.
 // tags: tasks
 // request: DeleteTaskRequest
 // response: DeleteTaskResponse
@@ -71,7 +70,7 @@ func UpdateTask(c *gin.Context) {}
 func DeleteTask(c *gin.Context) {}
 
 // apiary:operation GET /api/v1/tasks/{task_id}/comments
-// summary: Комментарии к задаче
+// summary: List task comments
 // tags: comments
 // request: ListCommentsRequest
 // response: ListCommentsResponse
@@ -79,7 +78,7 @@ func DeleteTask(c *gin.Context) {}
 func ListComments(c *gin.Context) {}
 
 // apiary:operation POST /api/v1/tasks/{task_id}/comments
-// summary: Добавить комментарий
+// summary: Add comment
 // tags: comments
 // request: AddCommentRequest
 // response: CommentDTO
