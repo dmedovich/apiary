@@ -1,9 +1,9 @@
 # apiary v1.0.0
 
-**OpenAPI 3.1 for Go — driven by types, not comment soup.**
+**OpenAPI 3.1 for Go: driven by types, not comment soup.**
 
 The first stable release. apiary type-checks your Go code and turns function
-signatures and struct tags into a complete, valid OpenAPI 3.1 document — no
+signatures and struct tags into a complete, valid OpenAPI 3.1 document, with no
 schema descriptions duplicated in comments.
 
 ```go
@@ -12,7 +12,7 @@ schema descriptions duplicated in comments.
 // tags: users
 // errors: 400,409,500
 func (h *UserHandler) CreateUser(ctx context.Context, req CreateUserRequest) (UserDTO, error) {
-    // business logic — apiary never touches this
+    // business logic; apiary never touches this
 }
 ```
 
@@ -49,7 +49,7 @@ are all inferred.
 
 **Schema generation**
 - Validation constraints from validator rules (`min`/`max`/`len`/`gt`..`lte`/
-  `oneof`/`email`/`uuid`/`uri`/`ip`/`hostname`) — for body fields **and**
+  `oneof`/`email`/`uuid`/`uri`/`ip`/`hostname`) for body fields **and**
   path/query/header parameters.
 - Nullable pointers: scalars as `type: [T, "null"]`, struct pointers as
   `anyOf: [{$ref}, {type: "null"}]`.
@@ -74,7 +74,7 @@ release.
 ## Compatibility
 
 apiary type-checks the packages it scans, so the code must compile (its
-dependencies must be available) — the same requirement as `go build`.
+dependencies must be available), the same requirement as `go build`.
 
 From v1.0.0 the annotation format, struct tags, supported handler signatures,
 and CLI flags follow [Semantic Versioning](https://semver.org) and will not
@@ -83,7 +83,7 @@ change in a breaking way within the v1 series. See
 
 ## Documentation
 
-Full docs and a live API explorer: **https://yaop-labs.github.io/apiary/**
+Full docs and worked examples: **https://yaop-labs.github.io/apiary/**
 
 ## Links
 

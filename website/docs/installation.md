@@ -19,7 +19,7 @@ apiary -security bearer -title "My API" -version "1.0.0" -out docs/openapi.yaml 
 ```
 
 apiary type-checks the packages it scans, so the code must compile (its
-dependencies must be available) — the same requirement as `go build`.
+dependencies must be available), the same requirement as `go build`.
 
 See the [CLI reference](cli) for every flag, JSON output, the `-check` CI mode,
 the `apiary.yaml` config file, and `apiary serve`.

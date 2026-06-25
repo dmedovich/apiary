@@ -1,15 +1,10 @@
 // @ts-check
-const fs = require('fs');
-const path = require('path');
 const { themes } = require('prism-react-renderer');
-
-// The live API Explorer renders this bundled example spec (dogfooding apiary).
-const apiSpec = fs.readFileSync(path.join(__dirname, '../docs/tasks.yaml'), 'utf8');
 
 /** @type {import('@docusaurus/types').Config} */
 const config = {
   title: 'apiary',
-  tagline: 'OpenAPI 3.1 for Go — driven by types, not comment soup.',
+  tagline: 'OpenAPI 3.1 for Go: driven by types, not comment soup.',
 
   url: 'https://yaop-labs.github.io',
   baseUrl: '/apiary/',
@@ -37,21 +32,6 @@ const config = {
     ],
   ],
 
-  plugins: [
-    [
-      '@scalar/docusaurus',
-      {
-        label: 'API',
-        route: '/api',
-        showNavLink: false,
-        configuration: {
-          content: apiSpec,
-          hideDownloadButton: false,
-        },
-      },
-    ],
-  ],
-
   themeConfig:
     /** @type {import('@docusaurus/preset-classic').ThemeConfig} */
     ({
@@ -59,7 +39,7 @@ const config = {
         title: 'apiary',
         items: [
           { type: 'docSidebar', sidebarId: 'docs', position: 'left', label: 'Docs' },
-          { to: '/api', label: 'API Explorer', position: 'left' },
+          { to: '/examples', label: 'Examples', position: 'left' },
           { href: 'https://github.com/yaop-labs/apiary', label: 'GitHub', position: 'right' },
         ],
       },
@@ -71,7 +51,7 @@ const config = {
             items: [
               { label: 'Get started', to: '/installation' },
               { label: 'CLI', to: '/cli' },
-              { label: 'API Explorer', to: '/api' },
+              { label: 'Examples', to: '/examples' },
             ],
           },
           {
@@ -82,7 +62,7 @@ const config = {
             ],
           },
         ],
-        copyright: `Copyright © ${new Date().getFullYear()} apiary.`,
+        copyright: `Copyright (c) ${new Date().getFullYear()} apiary.`,
       },
       prism: {
         theme: themes.github,

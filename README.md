@@ -5,7 +5,7 @@
 <h1 align="center">apiary</h1>
 
 <p align="center">
-  <em>OpenAPI 3.1 generator for Go — driven by types, not comment soup.</em>
+  <em>OpenAPI 3.1 generator for Go: driven by types, not comment soup.</em>
 </p>
 
 <p align="center">
@@ -23,10 +23,10 @@
 </p>
 
 <p align="center">
-  <strong><a href="https://yaop-labs.github.io/apiary/">📖 Documentation</a></strong>
-  ·
-  <a href="https://yaop-labs.github.io/apiary/api/">Live API Explorer</a>
-  ·
+  <strong><a href="https://yaop-labs.github.io/apiary/">Documentation</a></strong>
+  |
+  <a href="https://yaop-labs.github.io/apiary/examples">Examples</a>
+  |
   <a href="CHANGELOG.md">Changelog</a>
 </p>
 
@@ -34,7 +34,7 @@
 
 **apiary** generates an [OpenAPI 3.1](https://spec.openapis.org/oas/v3.1.0)
 document from annotated Go source code. Your function signatures and struct types
-are the source of truth — no schema descriptions duplicated in comments.
+are the source of truth, with no schema descriptions duplicated in comments.
 
 ```go
 // CreateUser registers a new account.
@@ -42,7 +42,7 @@ are the source of truth — no schema descriptions duplicated in comments.
 // tags: users
 // errors: 400,409,500
 func (h *UserHandler) CreateUser(ctx context.Context, req CreateUserRequest) (UserDTO, error) {
-    // business logic — apiary never touches this
+    // business logic; apiary never touches this
 }
 ```
 
@@ -59,7 +59,7 @@ go install github.com/yaop-labs/apiary/cmd/apiary@latest
 ## Quickstart
 
 ```bash
-apiary ./...                                   # scan module → openapi.yaml
+apiary ./...                                   # scan module -> openapi.yaml
 apiary -security bearer -out docs/api.yaml ./... # JWT default + custom output
 apiary serve ./...                             # live Swagger UI on :8080
 apiary -check -out docs/api.yaml ./...          # CI: fail if the spec is stale
@@ -67,25 +67,22 @@ apiary -check -out docs/api.yaml ./...          # CI: fail if the spec is stale
 
 ## Highlights
 
-- **Types, not comment soup** — signatures + struct tags are the contract.
-- **Real `go/types` analysis** — cross-package, imported, and generic types resolve.
-- **Rich schemas for free** — validator tags → constraints, nullable pointers, enums.
+- **Types, not comment soup.** Signatures + struct tags are the contract.
+- **Real `go/types` analysis.** Cross-package, imported, and generic types resolve.
+- **Rich schemas for free.** Validator tags become constraints, with nullable pointers and enums.
 - **OpenAPI 3.1**, `operationId` for client codegen, JSON or YAML output.
-- **Honest** — diagnostics for bad signatures, typos, and collisions.
+- **Honest.** Diagnostics for bad signatures, typos, and collisions.
 
 ## Documentation
 
-Full docs, examples, and the live API explorer live at
+Full docs and worked examples (Go input and generated spec) live at
 **[yaop-labs.github.io/apiary](https://yaop-labs.github.io/apiary/)**:
 
 - [Annotation format](https://yaop-labs.github.io/apiary/annotations)
 - [Struct tags](https://yaop-labs.github.io/apiary/struct-tags) & [Validation](https://yaop-labs.github.io/apiary/validation)
 - [Security](https://yaop-labs.github.io/apiary/security) & [Frameworks](https://yaop-labs.github.io/apiary/frameworks)
 - [CLI reference](https://yaop-labs.github.io/apiary/cli)
+- [Examples](https://yaop-labs.github.io/apiary/examples) (Go input and generated spec)
 - [Migrating from swaggo](https://yaop-labs.github.io/apiary/migrating-from-swaggo)
 
 Stability policy: [STABILITY.md](STABILITY.md). Contributions welcome.
-
-## License
-
-[MIT](LICENSE)

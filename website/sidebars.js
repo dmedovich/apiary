@@ -11,6 +11,7 @@ const sidebars = {
       collapsed: false,
       items: ['annotations', 'struct-tags', 'validation', 'security', 'frameworks'],
     },
+    'examples',
     'cli',
     'stability',
     'migrating-from-swaggo',

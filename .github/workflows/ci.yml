@@ -96,7 +96,7 @@ jobs:
         run: make generate
 
       - name: Fail if committed docs are stale
-        run: git diff --exit-code docs/ || (echo "::error::docs/ are out of date — run 'make generate' and commit" && exit 1)
+        run: git diff --exit-code docs/ || (echo "::error::docs/ are out of date; run 'make generate' and commit" && exit 1)
 
       - name: Validate generated specs against OpenAPI 3.1
         run: |

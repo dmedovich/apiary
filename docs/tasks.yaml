@@ -6,8 +6,8 @@ paths:
     /api/v1/auth/login:
         post:
             operationId: authLogin
-            summary: Войти
-            description: Возвращает JWT по логину и паролю.
+            summary: Log in
+            description: Returns a JWT for a username and password.
             tags:
                 - auth
             security: []
@@ -45,7 +45,7 @@ paths:
     /api/v1/auth/refresh:
         post:
             operationId: authRefresh
-            summary: Обновить токен
+            summary: Refresh token
             tags:
                 - auth
             security:
@@ -53,7 +53,7 @@ paths:
             parameters:
                 - name: Authorization
                   in: header
-                  description: Bearer <токен>
+                  description: Bearer <token>
                   required: true
                   schema:
                     type: string
@@ -79,8 +79,8 @@ paths:
     /api/v1/tasks:
         get:
             operationId: taskList
-            summary: Список задач
-            description: Поддерживает фильтрацию по статусу и приоритету, пагинацию.
+            summary: List tasks
+            description: Supports filtering by status and priority, and pagination.
             tags:
                 - tasks
             parameters:
@@ -141,7 +141,7 @@ paths:
                                 $ref: '#/components/schemas/ErrorResponse'
         post:
             operationId: taskCreate
-            summary: Создать задачу
+            summary: Create task
             tags:
                 - tasks
             requestBody:
@@ -184,7 +184,7 @@ paths:
     /api/v1/tasks/{id}:
         get:
             operationId: taskGet
-            summary: Задача по ID
+            summary: Get task by ID
             tags:
                 - tasks
             parameters:
@@ -222,7 +222,7 @@ paths:
                                 $ref: '#/components/schemas/ErrorResponse'
         put:
             operationId: taskUpdate
-            summary: Обновить задачу
+            summary: Update task
             tags:
                 - tasks
             parameters:
@@ -283,8 +283,8 @@ paths:
                                 $ref: '#/components/schemas/ErrorResponse'
         delete:
             operationId: taskDelete
-            summary: Удалить задачу
-            description: Только создатель задачи или администратор.
+            summary: Delete task
+            description: Only the task creator or an administrator.
             tags:
                 - tasks
             parameters:
@@ -329,7 +329,7 @@ paths:
     /api/v1/tasks/{task_id}/comments:
         get:
             operationId: commentList
-            summary: Комментарии к задаче
+            summary: List task comments
             tags:
                 - comments
             parameters:
@@ -367,7 +367,7 @@ paths:
                                 $ref: '#/components/schemas/ErrorResponse'
         post:
             operationId: commentAdd
-            summary: Добавить комментарий
+            summary: Add comment
             tags:
                 - comments
             parameters:
@@ -424,7 +424,7 @@ components:
             properties:
                 body:
                     type: string
-                    example: 'Смотрел логи — это регрессия из #1337'
+                    example: 'Checked the logs, this is a regression from #1337'
             required:
                 - body
         CommentDTO:
@@ -451,7 +451,7 @@ components:
                     format: int64
                 description:
                     type: string
-                    example: OOM killer убил сервис около 03:00
+                    example: OOM killer terminated the service around 03:00
                 priority:
                     type: integer
                     format: int32
@@ -459,7 +459,7 @@ components:
                     example: 3
                 title:
                     type: string
-                    example: Упал прод
+                    example: Production is down
             required:
                 - title
         DeleteTaskResponse:
@@ -509,7 +509,7 @@ components:
             properties:
                 password:
                     type: string
-                    example: nosomword
+                    example: s3cret
                 username:
                     type: string
                     example: larry
@@ -543,7 +543,7 @@ components:
                 priority:
                     type: integer
                     format: int32
-                    description: 1 — низкий, 3 — высокий
+                    description: 1 = low, 3 = high
                 status:
                     type: string
                     description: todo | in_progress | done
@@ -581,4 +581,4 @@ components:
             type: http
             scheme: bearer
             bearerFormat: JWT
-            description: 'JWT Bearer token — pass as: Authorization: Bearer <token>'
+            description: 'JWT Bearer token, pass as: Authorization: Bearer <token>'

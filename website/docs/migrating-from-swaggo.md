@@ -24,7 +24,7 @@ from your **types**.
 
 ## What you gain
 
-- No duplicated schema descriptions — struct tags and signatures are the truth.
+- No duplicated schema descriptions; struct tags and signatures are the truth.
 - OpenAPI **3.1** output.
 - Validation constraints from `validate:` tags you already write.
 - Real `go/types` resolution (cross-package, generics) instead of comment parsing.

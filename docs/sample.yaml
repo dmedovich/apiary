@@ -6,8 +6,8 @@ paths:
     /api/v1/auth/telegram:
         post:
             operationId: authTelegramAuth
-            summary: Аутентификация через Telegram
-            description: Принимает initData из Telegram WebApp, верифицирует HMAC-SHA256 подпись.
+            summary: Authenticate via Telegram
+            description: Accepts initData from the Telegram WebApp and verifies the HMAC-SHA256 signature.
             tags:
                 - auth
             security: []
@@ -45,18 +45,18 @@ paths:
     /api/v1/products:
         get:
             operationId: productListProducts
-            summary: Список товаров
-            description: Поддерживает пагинацию и полнотекстовый поиск. Цены возвращаются в валюте из заголовка X-Currency.
+            summary: List products
+            description: Supports pagination and full-text search. Prices are returned in the currency from the X-Currency header.
             tags:
                 - products
             parameters:
                 - name: X-Currency
                   in: header
-                  description: Валюта цен (ISO 4217)
+                  description: Price currency (ISO 4217)
                   required: false
                   schema:
                     type: string
-                  example: RUB
+                  example: USD
                 - name: page
                   in: query
                   required: false
@@ -78,7 +78,7 @@ paths:
                   required: false
                   schema:
                     type: string
-                  example: ноутбук
+                  example: laptop
             responses:
                 "200":
                     description: OK
@@ -101,7 +101,7 @@ paths:
     /api/v1/users:
         post:
             operationId: userCreateUser
-            summary: Создать пользователя
+            summary: Create user
             tags:
                 - users
             requestBody:
@@ -138,7 +138,7 @@ paths:
     /api/v1/users/{id}:
         get:
             operationId: userGetUser
-            summary: Профиль пользователя
+            summary: Get user profile
             tags:
                 - users
             parameters:
@@ -183,7 +183,7 @@ paths:
     /health:
         get:
             operationId: healthHealth
-            summary: Healthcheck
+            summary: Health check
             tags:
                 - infra
             security: []
@@ -202,7 +202,7 @@ components:
                 age:
                     type: [integer, "null"]
                     format: int32
-                    description: Возраст (необязательно)
+                    description: Age (optional)
                     minimum: 13
                     maximum: 120
                 email:
@@ -211,13 +211,13 @@ components:
                     example: larry@example.com
                 first_name:
                     type: string
-                    example: Ларри
+                    example: Larry
                 last_name:
                     type: string
-                    example: Сомик
+                    example: Somik
                 role:
                     type: string
-                    description: Роль пользователя
+                    description: User role
                     example: user
                     enum:
                         - admin
@@ -269,7 +269,7 @@ components:
             properties:
                 category:
                     type: string
-                    description: Категория товара
+                    description: Product category
                     enum:
                         - electronics
                         - clothing
@@ -293,7 +293,7 @@ components:
             properties:
                 init_data:
                     type: string
-                    description: initData из Telegram WebApp
+                    description: initData from the Telegram WebApp
                     example: query_id=AAH4pFf...
             required:
                 - init_data
@@ -303,7 +303,7 @@ components:
                 expires_in:
                     type: integer
                     format: int32
-                    description: TTL токена в секундах
+                    description: Token TTL in seconds
                     example: 3600
                 is_new_user:
                     type: boolean

@@ -12,7 +12,7 @@ const swaggerUIHTML = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>apiary — API docs</title>
+  <title>apiary API docs</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swagger-ui-dist/swagger-ui.css">
 </head>
 <body>
@@ -90,7 +90,7 @@ func runServe(args []string) {
 		_, _ = w.Write([]byte(swaggerUIHTML))
 	})
 
-	fmt.Printf("apiary: serving Swagger UI at %s (spec at %s/openapi.yaml) — Ctrl-C to stop\n",
+	fmt.Printf("apiary: serving Swagger UI at %s (spec at %s/openapi.yaml); Ctrl-C to stop\n",
 		displayURL(*addr), displayURL(*addr))
 	if err := http.ListenAndServe(*addr, mux); err != nil {
 		log.Fatalf("apiary: serve: %v", err)

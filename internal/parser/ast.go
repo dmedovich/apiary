@@ -147,7 +147,7 @@ func (p *Parser) parseFunction(pkg *packages.Package, fn *ast.FuncDecl) *Operati
 
 func (p *Parser) warnBadSignature(fn *ast.FuncDecl) *OperationInfo {
 	p.warnf(fn.Pos(),
-		"%s has an apiary:operation marker but an unsupported signature — handlers must be (R, error)-returning, gin, or net/http; see README",
+		"%s has an apiary:operation marker but an unsupported signature; handlers must be (R, error)-returning, gin, or net/http; see README",
 		fn.Name.Name)
 	return nil
 }

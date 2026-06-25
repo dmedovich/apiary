@@ -14,7 +14,7 @@ var builtinSchemes = map[string]*SecurityScheme{
 		Type:         "http",
 		Scheme:       "bearer",
 		BearerFormat: "JWT",
-		Description:  "JWT Bearer token — pass as: Authorization: Bearer <token>",
+		Description:  "JWT Bearer token, pass as: Authorization: Bearer <token>",
 	},
 	"basic": {
 		Type:        "http",
@@ -92,7 +92,7 @@ func (b *Builder) Build(operations []*parser.OperationInfo, types map[string]*pa
 		method := strings.ToUpper(opInfo.Annotation.Method)
 		if op.OperationID != "" {
 			if first, dup := seenOpID[op.OperationID]; dup {
-				log.Printf("apiary: warning: duplicate operationId %q (first at %s, again at %s %s) — set an explicit `operationId:` to disambiguate",
+				log.Printf("apiary: warning: duplicate operationId %q (first at %s, again at %s %s); set an explicit `operationId:` to disambiguate",
 					op.OperationID, first, method, path)
 			} else {
 				seenOpID[op.OperationID] = method + " " + path
@@ -112,11 +112,11 @@ func (b *Builder) Build(operations []*parser.OperationInfo, types map[string]*pa
 		case "PATCH":
 			slot = &item.Patch
 		default:
-			log.Printf("apiary: warning: unsupported HTTP method %q for %s — operation skipped (supported: GET, POST, PUT, DELETE, PATCH)", method, path)
+			log.Printf("apiary: warning: unsupported HTTP method %q for %s; operation skipped (supported: GET, POST, PUT, DELETE, PATCH)", method, path)
 			continue
 		}
 		if *slot != nil {
-			log.Printf("apiary: warning: duplicate operation %s %s — overwriting previous definition", method, path)
+			log.Printf("apiary: warning: duplicate operation %s %s; overwriting previous definition", method, path)
 		}
 		*slot = op
 		spec.Paths[path] = item
@@ -125,7 +125,7 @@ func (b *Builder) Build(operations []*parser.OperationInfo, types map[string]*pa
 	components := &Components{Schemas: sb.Components()}
 
 	for _, unknown := range sb.UnknownTypes() {
-		log.Printf("apiary: warning: type %q not found — add its package to the scan pattern", unknown)
+		log.Printf("apiary: warning: type %q not found; add its package to the scan pattern", unknown)
 	}
 
 	if len(b.security) > 0 {

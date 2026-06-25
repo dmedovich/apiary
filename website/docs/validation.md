@@ -5,7 +5,7 @@ sidebar_position: 5
 # Validation constraints
 
 apiary maps the common [go-playground/validator](https://github.com/go-playground/validator)
-rules you already write onto JSON-Schema constraints — no extra annotations.
+rules you already write onto JSON-Schema constraints, with no extra annotations.
 
 | `validate:` rule | JSON Schema (by field type) |
 |---|---|
@@ -42,7 +42,7 @@ age:      { type: [integer, "null"], minimum: 13, maximum: 120 }
 required: [username, email]
 ```
 
-## Go type → JSON Schema mapping
+## Go type to JSON Schema mapping
 
 | Go type | JSON Schema |
 |---------|-------------|

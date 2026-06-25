@@ -6,15 +6,15 @@ series, the following will not change in a breaking way:
 
 ## Stable surface
 
-- **Annotation format** — the `// apiary:operation METHOD /path` marker and its
+- **Annotation format.** The `// apiary:operation METHOD /path` marker and its
   keys: `summary`, `description`, `tags`, `errors`, `security`, `request`,
   `response`, `operationId`.
-- **Struct tags** — `json`, `doc`, `example`, `default`, `validate`, `path`,
-  `query`, `header`, and the documented `validate` → JSON-Schema constraint
+- **Struct tags.** `json`, `doc`, `example`, `default`, `validate`, `path`,
+  `query`, `header`, and the documented `validate` to JSON-Schema constraint
   mapping.
-- **Supported handler signatures** — the `(R, error)`-returning shapes, gin, and
+- **Supported handler signatures.** The `(R, error)`-returning shapes, gin, and
   net/http handlers described in the README.
-- **CLI flags** — `-out`, `-title`, `-version`, `-description`, `-security`,
+- **CLI flags.** `-out`, `-title`, `-version`, `-description`, `-security`,
   `-server`, `-format`, `-check`, `-C`, `-V`, the `apiary serve` subcommand, and
   the `apiary.yaml` config keys.
 

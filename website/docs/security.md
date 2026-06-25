@@ -15,11 +15,11 @@ annotation:
 
 ```go
 // apiary:operation POST /api/v1/auth/login
-// security: none        ← public, no token required
+// security: none        (public, no token required)
 func (h *AuthHandler) Login(...)
 
 // apiary:operation GET /api/v1/admin/report
-// security: bearer      ← explicit (self-documenting)
+// security: bearer      (explicit, self-documenting)
 func (h *AdminHandler) Report(...)
 ```
 

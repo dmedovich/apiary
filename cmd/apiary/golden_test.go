@@ -59,7 +59,7 @@ func TestGolden(t *testing.T) {
 				t.Fatalf("read golden %s: %v (run `make generate` to create it)", c.golden, err)
 			}
 			if !bytes.Equal(got, want) {
-				t.Errorf("generated spec differs from %s — run `make generate` to regenerate", c.golden)
+				t.Errorf("generated spec differs from %s; run `make generate` to regenerate", c.golden)
 			}
 		})
 	}

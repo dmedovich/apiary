@@ -23,7 +23,7 @@ apiary [flags] [patterns...]
 
 apiary prints `warning:` diagnostics to stderr for unsupported signatures,
 unknown annotation keys, unsupported HTTP methods, and duplicate path+method or
-`operationId` — so silent omissions become visible.
+`operationId`, so silent omissions become visible.
 
 ## CI check
 
@@ -41,7 +41,7 @@ apiary -format json -out - ./...   # JSON to stdout
 
 ## Config file
 
-Drop an `apiary.yaml` (or `.apiary.yaml`) in the working directory — handy with
+Drop an `apiary.yaml` (or `.apiary.yaml`) in the working directory; handy with
 `//go:generate apiary`. Explicit CLI flags override it.
 
 ```yaml

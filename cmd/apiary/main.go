@@ -100,7 +100,7 @@ func main() {
 	if spec.Components != nil {
 		schemaCount = len(spec.Components.Schemas)
 	}
-	fmt.Printf("apiary: wrote %s — %d operation(s) across %d path(s), %d schema(s)\n",
+	fmt.Printf("apiary: wrote %s: %d operation(s) across %d path(s), %d schema(s)\n",
 		outPath, opCount, len(spec.Paths), schemaCount)
 }
 
@@ -171,11 +171,11 @@ func runCheck(outPath string, data []byte) {
 	}
 	existing, err := os.ReadFile(outPath)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "apiary: %s is missing or unreadable — run apiary to generate it\n", outPath)
+		fmt.Fprintf(os.Stderr, "apiary: %s is missing or unreadable; run apiary to generate it\n", outPath)
 		os.Exit(1)
 	}
 	if !bytes.Equal(existing, data) {
-		fmt.Fprintf(os.Stderr, "apiary: %s is out of date — re-run apiary to regenerate it\n", outPath)
+		fmt.Fprintf(os.Stderr, "apiary: %s is out of date; re-run apiary to regenerate it\n", outPath)
 		os.Exit(1)
 	}
 	fmt.Printf("apiary: %s is up to date\n", outPath)

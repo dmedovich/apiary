@@ -178,7 +178,7 @@ func TestBuildNestedStructSchema(t *testing.T) {
 		t.Error("Response missing from components")
 	}
 	if _, ok := comps["UserDTO"]; !ok {
-		t.Error("UserDTO missing from components — nested struct not resolved")
+		t.Error("UserDTO missing from components; nested struct not resolved")
 	}
 }
 

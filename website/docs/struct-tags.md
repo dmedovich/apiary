@@ -10,8 +10,8 @@ sidebar_position: 4
 | `doc:"text"` | `description` in the schema / parameter |
 | `example:"val"` | `example` in the schema / parameter |
 | `default:"val"` | `default` in the schema |
-| `validate:"..."` | go-playground/validator rules → JSON-Schema constraints (see [Validation](validation)) |
-| `path:"name"` | Path parameter — matches `{name}` in the URL |
+| `validate:"..."` | go-playground/validator rules mapped to JSON-Schema constraints (see [Validation](validation)) |
+| `path:"name"` | Path parameter; matches `{name}` in the URL |
 | `query:"name"` | Query parameter |
 | `header:"name"` | Header parameter (e.g. `X-Currency`, `Authorization`) |
 
@@ -19,7 +19,7 @@ sidebar_position: 4
 
 | Tag / condition | OpenAPI location |
 |---|---|
-| `path:"name"` | `parameters[in=path]` — always required |
+| `path:"name"` | `parameters[in=path]`, always required |
 | `query:"name"` | `parameters[in=query]` |
 | `header:"name"` | `parameters[in=header]` |
 | Remaining fields on `GET` | implicit query parameters |
@@ -30,7 +30,7 @@ no request body.
 
 ## Enums
 
-apiary detects named types with `const` values and adds `enum` automatically — no
+apiary detects named types with `const` values and adds `enum` automatically; no
 annotation needed. Works with string and integer base types.
 
 ```go

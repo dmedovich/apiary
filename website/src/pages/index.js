@@ -12,7 +12,7 @@ const FEATURES = [
   },
   {
     title: 'Real go/types analysis',
-    body: 'Cross-package, imported, and generic types resolve semantically — not guessed from bare names.',
+    body: 'Cross-package, imported, and generic types resolve semantically, not guessed from bare names.',
   },
   {
     title: 'Rich schemas for free',
@@ -39,7 +39,7 @@ const SAMPLE = `// CreateUser registers a new account.
 func (h *UserHandler) CreateUser(
     ctx context.Context, req CreateUserRequest,
 ) (UserDTO, error) {
-    // business logic — apiary never touches this
+    // business logic; apiary never touches this
 }`;
 
 function Hero() {
@@ -53,14 +53,14 @@ function Hero() {
             <p className={styles.heroTagline}>{siteConfig.tagline}</p>
             <p className={styles.heroSub}>
               Generate a complete, valid OpenAPI&nbsp;3.1 document from annotated
-              Go — driven by your types.
+              Go, driven by your types.
             </p>
             <div className={styles.buttons}>
               <Link className="button button--primary button--lg" to="/installation">
-                Get started →
+                Get started
               </Link>
-              <Link className="button button--secondary button--lg" to="/api">
-                API Explorer
+              <Link className="button button--secondary button--lg" to="/examples">
+                Examples
               </Link>
               <Link
                 className="button button--outline button--lg"
@@ -100,7 +100,7 @@ export default function Home() {
   return (
     <Layout
       title="OpenAPI 3.1 for Go"
-      description="OpenAPI 3.1 generator for Go — driven by types, not comment soup."
+      description="OpenAPI 3.1 generator for Go: driven by types, not comment soup."
     >
       <Hero />
       <main>

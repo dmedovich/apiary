@@ -11,14 +11,14 @@ Place the marker **directly above** the function, with no blank lines:
 // summary: One-line summary
 // description: Longer description (may contain colons)
 // tags: tag1, tag2
-// security: bearer          ← optional, overrides global
+// security: bearer          (optional, overrides global)
 // errors: 400,401,403,500
-// operationId: customId     ← optional, overrides the auto-derived id
+// operationId: customId     (optional, overrides the auto-derived id)
 ```
 
 ## Summary from your Go doc comment
 
-You usually don't need a `summary:` line — apiary falls back to the handler's
+You usually don't need a `summary:` line; apiary falls back to the handler's
 **godoc**. Prose lines *above* the marker become the summary (first line) and
 description (the rest); a leading function name is stripped:
 
@@ -29,7 +29,7 @@ description (the rest); a leading function name is stripped:
 func (h *UserHandler) CreateUser(ctx context.Context, req CreateUserRequest) (UserDTO, error)
 ```
 
-→ `summary: Registers a new account.`,
+Produces `summary: Registers a new account.` and
 `description: It validates the email and sends a confirmation.`
 An explicit `summary:` / `description:` always wins.
 
@@ -37,7 +37,7 @@ An explicit `summary:` / `description:` always wins.
 
 Every operation gets a stable, unique `operationId` (great for client
 generators), derived from the receiver and method name:
-`(h *UserHandler) CreateUser` → `userCreate`, `(h *CommentHandler) List` →
+`(h *UserHandler) CreateUser` -> `userCreate`, `(h *CommentHandler) List` ->
 `commentList`. Free functions use the function name. Override per-operation with
 `operationId:`. apiary warns on collisions.
 
@@ -62,4 +62,4 @@ specific code:
 // errors: 400 ValidationError, 401, 500
 ```
 
-→ `400` references `ValidationError`; `401` and `500` use `ErrorResponse`.
+Here `400` references `ValidationError`; `401` and `500` use `ErrorResponse`.

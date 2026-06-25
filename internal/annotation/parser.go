@@ -111,7 +111,7 @@ func Parse(lines []string) (*Operation, bool) {
 
 			if looksLikeKey(key) {
 				op.Warnings = append(op.Warnings,
-					"unknown annotation key \""+key+"\" — ignored (did you mean one of summary, description, tags, errors, security, request, response?)")
+					"unknown annotation key \""+key+"\"; ignored (did you mean one of summary, description, tags, errors, security, request, response?)")
 			}
 		}
 	}

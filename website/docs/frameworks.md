@@ -12,7 +12,7 @@ request and response types are given via annotations:
 // apiary:operation POST /api/v1/tasks
 // summary: Create task
 // tags: tasks
-// request: CreateTaskRequest   ← required for gin / net-http handlers
+// request: CreateTaskRequest   (required for gin / net-http handlers)
 // response: TaskDTO
 // errors: 400,401,422,500
 func CreateTask(c *gin.Context) {
@@ -27,12 +27,12 @@ Slice responses work too:
 // response: []TaskDTO
 ```
 
-Path, query, and header parameters still come from struct tags — the same
+Path, query, and header parameters still come from struct tags: the same
 `path:`, `query:`, and `header:` tags used with standard handlers.
 
 See the bundled examples:
 [`testdata/router`](https://github.com/yaop-labs/apiary/tree/main/testdata/router)
 (standard) and
 [`testdata/gin`](https://github.com/yaop-labs/apiary/tree/main/testdata/gin)
-(gin — a nested module with the real gin dependency, rendered live in the
-[API Explorer](/api/)).
+(gin: a nested module with the real gin dependency, shown in full on the
+[Examples](examples) page).
