@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/honeynil/apiary/internal/parser"
-	"github.com/honeynil/apiary/internal/schema"
+	"github.com/yaop-labs/apiary/internal/parser"
+	"github.com/yaop-labs/apiary/internal/schema"
 	"gopkg.in/yaml.v3"
 )
 

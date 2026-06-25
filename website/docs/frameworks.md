@@ -31,8 +31,8 @@ Path, query, and header parameters still come from struct tags — the same
 `path:`, `query:`, and `header:` tags used with standard handlers.
 
 See the bundled examples:
-[`testdata/router`](https://github.com/honeynil/apiary/tree/main/testdata/router)
+[`testdata/router`](https://github.com/yaop-labs/apiary/tree/main/testdata/router)
 (standard) and
-[`testdata/gin`](https://github.com/honeynil/apiary/tree/main/testdata/gin)
+[`testdata/gin`](https://github.com/yaop-labs/apiary/tree/main/testdata/gin)
 (gin — a nested module with the real gin dependency, rendered live in the
 [API Explorer](/api/)).

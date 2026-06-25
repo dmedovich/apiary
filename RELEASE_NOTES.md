@@ -65,7 +65,7 @@ are all inferred.
 ## Install
 
 ```bash
-go install github.com/honeynil/apiary/cmd/apiary@v1.0.0
+go install github.com/yaop-labs/apiary/cmd/apiary@v1.0.0
 ```
 
 Pre-built binaries for linux/darwin/windows (amd64/arm64) are attached to this
@@ -83,7 +83,7 @@ change in a breaking way within the v1 series. See
 
 ## Documentation
 
-Full docs and a live API explorer: **https://honeynil.github.io/apiary/**
+Full docs and a live API explorer: **https://yaop-labs.github.io/apiary/**
 
 ## Links
 

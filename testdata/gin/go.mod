@@ -1,4 +1,4 @@
-module github.com/honeynil/apiary/testdata/gin
+module github.com/yaop-labs/apiary/testdata/gin
 
 go 1.22
 

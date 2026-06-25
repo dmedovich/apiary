@@ -6,9 +6,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/honeynil/apiary/internal/annotation"
-	"github.com/honeynil/apiary/internal/openapi"
-	"github.com/honeynil/apiary/internal/parser"
+	"github.com/yaop-labs/apiary/internal/annotation"
+	"github.com/yaop-labs/apiary/internal/openapi"
+	"github.com/yaop-labs/apiary/internal/parser"
 )
 
 func captureLog(t *testing.T, fn func()) string {

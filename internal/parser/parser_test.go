@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/honeynil/apiary/internal/parser"
+	"github.com/yaop-labs/apiary/internal/parser"
 )
 
 func loadSrc(t *testing.T, src string) *parser.Parser {

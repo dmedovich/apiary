@@ -14,7 +14,7 @@ its validity as an OpenAPI 3.1 document and the documented semantics), diagnosti
 wording, internal packages, and behavior for input that does not compile.
 
 Deprecated features are announced in the
-[changelog](https://github.com/honeynil/apiary/blob/main/CHANGELOG.md), keep
+[changelog](https://github.com/yaop-labs/apiary/blob/main/CHANGELOG.md), keep
 working for the remainder of v1, and are removed no earlier than v2. See
-[`STABILITY.md`](https://github.com/honeynil/apiary/blob/main/STABILITY.md) for
+[`STABILITY.md`](https://github.com/yaop-labs/apiary/blob/main/STABILITY.md) for
 the full policy.

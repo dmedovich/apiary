@@ -6,9 +6,9 @@ const config = {
   title: 'apiary',
   tagline: 'OpenAPI 3.1 for Go — driven by types, not comment soup.',
 
-  url: 'https://honeynil.github.io',
+  url: 'https://yaop-labs.github.io',
   baseUrl: '/apiary/',
-  organizationName: 'honeynil',
+  organizationName: 'yaop-labs',
   projectName: 'apiary',
   trailingSlash: false,
 
@@ -24,7 +24,7 @@ const config = {
         docs: {
           routeBasePath: '/',
           sidebarPath: require.resolve('./sidebars.js'),
-          editUrl: 'https://github.com/honeynil/apiary/tree/main/website/',
+          editUrl: 'https://github.com/yaop-labs/apiary/tree/main/website/',
         },
         blog: false,
         theme: { customCss: require.resolve('./src/css/custom.css') },
@@ -54,7 +54,7 @@ const config = {
         items: [
           { type: 'docSidebar', sidebarId: 'docs', position: 'left', label: 'Docs' },
           { to: '/api/', label: 'API Explorer', position: 'left' },
-          { href: 'https://github.com/honeynil/apiary', label: 'GitHub', position: 'right' },
+          { href: 'https://github.com/yaop-labs/apiary', label: 'GitHub', position: 'right' },
         ],
       },
       footer: {
@@ -63,16 +63,16 @@ const config = {
           {
             title: 'Docs',
             items: [
-              { label: 'Quickstart', to: '/' },
+              { label: 'Get started', to: '/installation' },
               { label: 'CLI', to: '/cli' },
-              { label: 'API Explorer', to: '/api/' },
+              { label: 'API Explorer', to: '/api' },
             ],
           },
           {
             title: 'Project',
             items: [
-              { label: 'GitHub', href: 'https://github.com/honeynil/apiary' },
-              { label: 'Releases', href: 'https://github.com/honeynil/apiary/releases' },
+              { label: 'GitHub', href: 'https://github.com/yaop-labs/apiary' },
+              { label: 'Releases', href: 'https://github.com/yaop-labs/apiary/releases' },
             ],
           },
         ],

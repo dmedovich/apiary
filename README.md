@@ -9,11 +9,11 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/honeynil/apiary/actions/workflows/ci.yml"><img src="https://github.com/honeynil/apiary/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
-  <a href="https://goreportcard.com/report/github.com/honeynil/apiary"><img src="https://goreportcard.com/badge/github.com/honeynil/apiary" alt="Go Report Card"></a>
-  <a href="https://pkg.go.dev/github.com/honeynil/apiary"><img src="https://pkg.go.dev/badge/github.com/honeynil/apiary.svg" alt="Go Reference"></a>
-  <a href="https://github.com/honeynil/apiary/releases"><img src="https://img.shields.io/github/v/release/honeynil/apiary?include_prereleases&sort=semver" alt="Release"></a>
-  <a href="LICENSE"><img src="https://img.shields.io/github/license/honeynil/apiary" alt="License"></a>
+  <a href="https://github.com/yaop-labs/apiary/actions/workflows/ci.yml"><img src="https://github.com/yaop-labs/apiary/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://goreportcard.com/report/github.com/yaop-labs/apiary"><img src="https://goreportcard.com/badge/github.com/yaop-labs/apiary" alt="Go Report Card"></a>
+  <a href="https://pkg.go.dev/github.com/yaop-labs/apiary"><img src="https://pkg.go.dev/badge/github.com/yaop-labs/apiary.svg" alt="Go Reference"></a>
+  <a href="https://github.com/yaop-labs/apiary/releases"><img src="https://img.shields.io/github/v/release/yaop-labs/apiary?include_prereleases&sort=semver" alt="Release"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/yaop-labs/apiary" alt="License"></a>
 </p>
 
 <p align="center">
@@ -23,9 +23,9 @@
 </p>
 
 <p align="center">
-  <strong><a href="https://honeynil.github.io/apiary/">📖 Documentation</a></strong>
+  <strong><a href="https://yaop-labs.github.io/apiary/">📖 Documentation</a></strong>
   ·
-  <a href="https://honeynil.github.io/apiary/api/">Live API Explorer</a>
+  <a href="https://yaop-labs.github.io/apiary/api/">Live API Explorer</a>
   ·
   <a href="CHANGELOG.md">Changelog</a>
 </p>
@@ -53,7 +53,7 @@ become nullable; enums are detected automatically.
 ## Install
 
 ```bash
-go install github.com/honeynil/apiary/cmd/apiary@latest
+go install github.com/yaop-labs/apiary/cmd/apiary@latest
 ```
 
 ## Quickstart
@@ -76,13 +76,13 @@ apiary -check -out docs/api.yaml ./...          # CI: fail if the spec is stale
 ## Documentation
 
 Full docs, examples, and the live API explorer live at
-**[honeynil.github.io/apiary](https://honeynil.github.io/apiary/)**:
+**[yaop-labs.github.io/apiary](https://yaop-labs.github.io/apiary/)**:
 
-- [Annotation format](https://honeynil.github.io/apiary/annotations)
-- [Struct tags](https://honeynil.github.io/apiary/struct-tags) & [Validation](https://honeynil.github.io/apiary/validation)
-- [Security](https://honeynil.github.io/apiary/security) & [Frameworks](https://honeynil.github.io/apiary/frameworks)
-- [CLI reference](https://honeynil.github.io/apiary/cli)
-- [Migrating from swaggo](https://honeynil.github.io/apiary/migrating-from-swaggo)
+- [Annotation format](https://yaop-labs.github.io/apiary/annotations)
+- [Struct tags](https://yaop-labs.github.io/apiary/struct-tags) & [Validation](https://yaop-labs.github.io/apiary/validation)
+- [Security](https://yaop-labs.github.io/apiary/security) & [Frameworks](https://yaop-labs.github.io/apiary/frameworks)
+- [CLI reference](https://yaop-labs.github.io/apiary/cli)
+- [Migrating from swaggo](https://yaop-labs.github.io/apiary/migrating-from-swaggo)
 
 Stability policy: [STABILITY.md](STABILITY.md). Contributions welcome.
 

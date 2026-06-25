@@ -1,4 +1,4 @@
-module github.com/honeynil/apiary
+module github.com/yaop-labs/apiary
 
 go 1.22.0
 

@@ -3,7 +3,7 @@ package openapi
 import (
 	"testing"
 
-	"github.com/honeynil/apiary/internal/parser"
+	"github.com/yaop-labs/apiary/internal/parser"
 )
 
 func TestOperationSecurity(t *testing.T) {

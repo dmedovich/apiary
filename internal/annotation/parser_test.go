@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/honeynil/apiary/internal/annotation"
+	"github.com/yaop-labs/apiary/internal/annotation"
 )
 
 func TestParse_Full(t *testing.T) {

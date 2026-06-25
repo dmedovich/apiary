@@ -5,8 +5,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/honeynil/apiary/internal/parser"
-	"github.com/honeynil/apiary/internal/schema"
+	"github.com/yaop-labs/apiary/internal/parser"
+	"github.com/yaop-labs/apiary/internal/schema"
 )
 
 var builtinSchemes = map[string]*SecurityScheme{

@@ -4,7 +4,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/honeynil/apiary/internal/parser"
+	"github.com/yaop-labs/apiary/internal/parser"
 	"gopkg.in/yaml.v3"
 )
 

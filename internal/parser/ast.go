@@ -8,7 +8,7 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/honeynil/apiary/internal/annotation"
+	"github.com/yaop-labs/apiary/internal/annotation"
 	"golang.org/x/tools/go/packages"
 )
 

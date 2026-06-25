@@ -5,7 +5,7 @@ sidebar_position: 2
 # Installation
 
 ```bash
-go install github.com/honeynil/apiary/cmd/apiary@latest
+go install github.com/yaop-labs/apiary/cmd/apiary@latest
 ```
 
 ## Quickstart

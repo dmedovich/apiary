@@ -1,6 +1,6 @@
 package openapi
 
-import "github.com/honeynil/apiary/internal/schema"
+import "github.com/yaop-labs/apiary/internal/schema"
 
 type SecurityRequirement map[string][]string
 
