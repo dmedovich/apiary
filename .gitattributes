@@ -1,0 +1,7 @@
+# Normalize line endings to LF in the repository and on checkout on every OS
+# (including Windows, where autocrlf would otherwise convert to CRLF). This keeps
+# the generated docs/*.yaml byte-identical across platforms for the golden tests.
+* text=auto eol=lf
+
+# Binary assets must never be line-ending converted.
+*.png binary
