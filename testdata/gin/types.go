@@ -1,5 +1,3 @@
-//go:build ignore
-
 package gin
 
 import "time"

@@ -3,25 +3,120 @@
 package schema
 
 import (
+	"strconv"
 	"strings"
 
 	"github.com/honeynil/apiary/internal/parser"
+	"gopkg.in/yaml.v3"
 )
 
 // Schema is a subset of JSON Schema Draft 2020-12 used by OpenAPI 3.1.
 type Schema struct {
-	Ref                  string             `yaml:"$ref,omitempty"`
-	AllOf                []*Schema          `yaml:"allOf,omitempty"`
-	Type                 string             `yaml:"type,omitempty"`
-	Format               string             `yaml:"format,omitempty"`
-	Description          string             `yaml:"description,omitempty"`
-	Example              any                `yaml:"example,omitempty"`
-	Default              any                `yaml:"default,omitempty"`
-	Enum                 []any              `yaml:"enum,omitempty"`
+	Ref         string    `yaml:"$ref,omitempty"`
+	AllOf       []*Schema `yaml:"allOf,omitempty"`
+	AnyOf       []*Schema `yaml:"anyOf,omitempty"`
+	Type        string    `yaml:"type,omitempty"`
+	Format      string    `yaml:"format,omitempty"`
+	Description string    `yaml:"description,omitempty"`
+	Example     any       `yaml:"example,omitempty"`
+	Default     any       `yaml:"default,omitempty"`
+	Enum        []any     `yaml:"enum,omitempty"`
+	// Validation constraints (derived from `validate:"..."` struct tags).
+	Minimum          any    `yaml:"minimum,omitempty"`
+	Maximum          any    `yaml:"maximum,omitempty"`
+	ExclusiveMinimum any    `yaml:"exclusiveMinimum,omitempty"`
+	ExclusiveMaximum any    `yaml:"exclusiveMaximum,omitempty"`
+	MinLength        *int   `yaml:"minLength,omitempty"`
+	MaxLength        *int   `yaml:"maxLength,omitempty"`
+	MinItems         *int   `yaml:"minItems,omitempty"`
+	MaxItems         *int   `yaml:"maxItems,omitempty"`
+	Pattern          string `yaml:"pattern,omitempty"`
+
 	Properties           map[string]*Schema `yaml:"properties,omitempty"`
 	AdditionalProperties *Schema            `yaml:"additionalProperties,omitempty"`
 	Items                *Schema            `yaml:"items,omitempty"`
 	Required             []string           `yaml:"required,omitempty"`
+
+	// Nullable marks a scalar schema as accepting null. It is not emitted as a
+	// field; instead MarshalYAML rewrites `type` to the 3.1 form [type, "null"].
+	Nullable bool `yaml:"-"`
+}
+
+// MarshalYAML renders the schema. For a non-nullable schema this is identical to
+// default struct marshaling (field order preserved). For a nullable scalar
+// schema it rewrites the `type` scalar into the OpenAPI 3.1 sequence form,
+// e.g. `type: [string, "null"]`, leaving every other field untouched.
+func (s Schema) MarshalYAML() (any, error) {
+	type raw Schema // shed MarshalYAML to avoid infinite recursion
+
+	// Nullable scalar → rewrite `type` to the 3.1 sequence form [T, "null"].
+	if s.Nullable && s.Type != "" {
+		var node yaml.Node
+		if err := node.Encode(raw(s)); err != nil {
+			return nil, err
+		}
+		for i := 0; i+1 < len(node.Content); i += 2 {
+			if node.Content[i].Value == "type" {
+				val := node.Content[i+1]
+				node.Content[i+1] = &yaml.Node{
+					Kind:  yaml.SequenceNode,
+					Style: yaml.FlowStyle,
+					Content: []*yaml.Node{
+						{Kind: yaml.ScalarNode, Value: val.Value},
+						{Kind: yaml.ScalarNode, Value: "null", Style: yaml.DoubleQuotedStyle},
+					},
+				}
+				break
+			}
+		}
+		return &node, nil
+	}
+
+	// A standalone null schema must keep `type` quoted (type: "null"), otherwise
+	// YAML parses it as the null value rather than the string token.
+	if s.Type == "null" {
+		var node yaml.Node
+		if err := node.Encode(raw(s)); err != nil {
+			return nil, err
+		}
+		for i := 0; i+1 < len(node.Content); i += 2 {
+			if node.Content[i].Value == "type" {
+				node.Content[i+1].Style = yaml.DoubleQuotedStyle
+				break
+			}
+		}
+		return &node, nil
+	}
+
+	return raw(s), nil
+}
+
+// nullSchema is the `{type: "null"}` branch used to make a $ref nullable.
+func nullSchema() *Schema { return &Schema{Type: "null"} }
+
+// CoerceScalar converts a raw struct-tag value (always a string) to a typed
+// value matching the schema type, so e.g. example:"42" on an integer field
+// renders as 42, not "42". Empty input yields nil; unparseable input stays a
+// string.
+func CoerceScalar(raw, schemaType string) any {
+	if raw == "" {
+		return nil
+	}
+	switch schemaType {
+	case "integer":
+		if n, err := strconv.Atoi(raw); err == nil {
+			return n
+		}
+	case "number":
+		if f, err := strconv.ParseFloat(raw, 64); err == nil {
+			return f
+		}
+	case "boolean":
+		if b, err := strconv.ParseBool(raw); err == nil {
+			return b
+		}
+	}
+	return raw
 }
 
 // Builder converts parser.TypeInfo values into JSON Schema objects and tracks
@@ -181,34 +276,183 @@ func (b *Builder) ensureComponent(name string) {
 }
 
 func (b *Builder) buildFieldSchema(field *parser.FieldInfo) *Schema {
-	typeName := field.Type.Name
-	if field.Type.IsPtr {
-		typeName = field.Type.Name
-	}
-
-	// Check if the field's type is a named enum type.
-	enumInfo := b.enums[typeName]
-
+	// BuildSchema always returns a freshly allocated schema, so it is safe to
+	// annotate it in place.
 	s := b.BuildSchema(field.Type)
+	// For a body property, description and example live on the schema itself.
+	if field.Doc != "" {
+		s.Description = field.Doc
+	}
+	if field.Example != "" {
+		s.Example = CoerceScalar(field.Example, s.Type)
+	}
+	b.applyConstraints(s, field)
+	return s
+}
 
-	needsCopy := field.Doc != "" || field.Example != "" || field.Default != "" || enumInfo != nil
-	if needsCopy {
-		cp := *s
-		s = &cp
-		if field.Doc != "" {
-			s.Description = field.Doc
-		}
-		if field.Example != "" {
-			s.Example = field.Example
-		}
-		if field.Default != "" {
-			s.Default = field.Default
-		}
-		if enumInfo != nil {
-			s.Enum = enumInfo.Values
+// BuildParamSchema builds the schema for an OpenAPI parameter. It carries the
+// same validation constraints, enum, default and nullability as a body field,
+// but not description/example — for parameters those belong on the Parameter
+// object, not on its schema.
+func (b *Builder) BuildParamSchema(field *parser.FieldInfo) *Schema {
+	s := b.BuildSchema(field.Type)
+	b.applyConstraints(s, field)
+	return s
+}
+
+// applyConstraints annotates a freshly built schema with the constraints common
+// to body fields and parameters: default value, enum (named enum types) and the
+// JSON-Schema constraints derived from `validate:"..."`, plus pointer nullability.
+func (b *Builder) applyConstraints(s *Schema, field *parser.FieldInfo) {
+	if field.Default != "" {
+		s.Default = CoerceScalar(field.Default, s.Type)
+	}
+	// A pointer (*T) shares the same underlying type name, so IsPtr does not
+	// affect the enum lookup.
+	if enumInfo := b.enums[field.Type.Name]; enumInfo != nil {
+		s.Enum = enumInfo.Values
+	}
+	if field.Validate != "" {
+		applyValidators(s, field.Validate)
+	}
+	if field.Type.IsPtr {
+		switch {
+		case isScalarType(s.Type):
+			// Pointer to a scalar accepts null (3.1: type: [T, "null"]).
+			s.Nullable = true
+		case s.Ref != "":
+			// Pointer to a struct: $ref can't carry `type`, so wrap it as
+			// anyOf: [{$ref}, {type: "null"}], preserving any description/example.
+			*s = Schema{
+				Description: s.Description,
+				Example:     s.Example,
+				AnyOf:       []*Schema{{Ref: s.Ref}, nullSchema()},
+			}
 		}
 	}
-	return s
+}
+
+// isScalarType reports whether t is a primitive (non-composite) JSON Schema type.
+func isScalarType(t string) bool {
+	switch t {
+	case "string", "integer", "number", "boolean":
+		return true
+	}
+	return false
+}
+
+// applyValidators maps the common go-playground/validator rules in a
+// `validate:"..."` tag onto JSON-Schema constraints. The interpretation of
+// min/max depends on the already-resolved schema type (numeric value vs string
+// length vs array length). Unknown validators are ignored.
+func applyValidators(s *Schema, raw string) {
+	numeric := s.Type == "integer" || s.Type == "number"
+	for _, part := range strings.Split(raw, ",") {
+		name, val, _ := strings.Cut(strings.TrimSpace(part), "=")
+		switch name {
+		case "email":
+			s.Format = "email"
+		case "uuid", "uuid3", "uuid4", "uuid5":
+			s.Format = "uuid"
+		case "uri", "url", "http_url":
+			s.Format = "uri"
+		case "ipv4", "ip4_addr":
+			s.Format = "ipv4"
+		case "ipv6", "ip6_addr":
+			s.Format = "ipv6"
+		case "hostname", "hostname_rfc1123":
+			s.Format = "hostname"
+		case "oneof":
+			if e := parseEnumValues(val, s.Type); len(e) > 0 {
+				s.Enum = e
+			}
+		case "min":
+			setBound(s, val, true, numeric)
+		case "max":
+			setBound(s, val, false, numeric)
+		case "len":
+			setBound(s, val, true, numeric)
+			setBound(s, val, false, numeric)
+		case "gt":
+			if n, ok := parseNumber(val); ok && numeric {
+				s.ExclusiveMinimum = n
+			}
+		case "gte":
+			if n, ok := parseNumber(val); ok && numeric {
+				s.Minimum = n
+			}
+		case "lt":
+			if n, ok := parseNumber(val); ok && numeric {
+				s.ExclusiveMaximum = n
+			}
+		case "lte":
+			if n, ok := parseNumber(val); ok && numeric {
+				s.Maximum = n
+			}
+		}
+	}
+}
+
+// setBound applies a min (isMin) or max bound, choosing minimum/maximum for
+// numbers, minItems/maxItems for arrays, or minLength/maxLength otherwise.
+func setBound(s *Schema, val string, isMin, numeric bool) {
+	if numeric {
+		if n, ok := parseNumber(val); ok {
+			if isMin {
+				s.Minimum = n
+			} else {
+				s.Maximum = n
+			}
+		}
+		return
+	}
+	n, err := strconv.Atoi(val)
+	if err != nil {
+		return
+	}
+	switch s.Type {
+	case "array":
+		if isMin {
+			s.MinItems = &n
+		} else {
+			s.MaxItems = &n
+		}
+	default: // string and other scalar-ish types use length
+		if isMin {
+			s.MinLength = &n
+		} else {
+			s.MaxLength = &n
+		}
+	}
+}
+
+// parseNumber parses an integer when possible (so YAML renders 1, not 1.0),
+// otherwise a float.
+func parseNumber(s string) (any, bool) {
+	if i, err := strconv.Atoi(s); err == nil {
+		return i, true
+	}
+	if f, err := strconv.ParseFloat(s, 64); err == nil {
+		return f, true
+	}
+	return nil, false
+}
+
+// parseEnumValues splits a space-separated `oneof` value list, parsing integers
+// when the schema type is integer.
+func parseEnumValues(val, schemaType string) []any {
+	fields := strings.Fields(val)
+	out := make([]any, 0, len(fields))
+	for _, f := range fields {
+		if schemaType == "integer" {
+			if i, err := strconv.Atoi(f); err == nil {
+				out = append(out, i)
+				continue
+			}
+		}
+		out = append(out, f)
+	}
+	return out
 }
 
 // primitiveSchema maps Go primitive type names to their JSON Schema equivalents.

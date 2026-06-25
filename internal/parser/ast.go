@@ -1,17 +1,19 @@
-// Package parser walks Go source files via go/ast, collecting struct type
-// definitions and functions annotated with // apiary:operation.
+// Package parser type-checks Go packages via go/packages + go/types and
+// extracts struct types, enums, and functions annotated with
+// // apiary:operation. Type resolution is semantic: cross-package, external,
+// and generic types are handled correctly rather than guessed from bare names.
 package parser
 
 import (
 	"go/ast"
-	goparser "go/parser"
 	"go/token"
-	"os"
-	"path/filepath"
-	"strconv"
+	"go/types"
+	"log"
 	"strings"
+	"unicode"
 
 	"github.com/honeynil/apiary/internal/annotation"
+	"golang.org/x/tools/go/packages"
 )
 
 // OperationInfo holds everything extracted from a single annotated function.
@@ -21,43 +23,32 @@ type OperationInfo struct {
 	ResponseType *TypeRef // nil if no response body schema
 }
 
-// Parser accumulates type definitions and operations from Go source files.
+// Parser accumulates type definitions and operations from the loaded packages.
 type Parser struct {
-	fset        *token.FileSet
-	types       map[string]*TypeInfo
-	operations  []*OperationInfo
-	enums       map[string]*EnumInfo
-	typeAliases map[string]string // "Status" → "string"
+	fset       *token.FileSet
+	types      map[string]*TypeInfo
+	operations []*OperationInfo
+	enums      map[string]*EnumInfo
+	modulePath string                  // module path, for in-module detection
+	compNames  map[*types.Named]string // named type → unique component/enum name
+	usedNames  map[string]*types.Named // reverse index for collision detection
 }
 
-// New creates a ready-to-use Parser.
+// New creates a ready-to-use Parser. Call Load to populate it.
 func New() *Parser {
 	return &Parser{
-		fset:        token.NewFileSet(),
-		types:       make(map[string]*TypeInfo),
-		enums:       make(map[string]*EnumInfo),
-		typeAliases: make(map[string]string),
+		fset:      token.NewFileSet(),
+		types:     make(map[string]*TypeInfo),
+		enums:     make(map[string]*EnumInfo),
+		compNames: make(map[*types.Named]string),
+		usedNames: make(map[string]*types.Named),
 	}
 }
 
-// ParseDir reads every non-test .go file in dir and extracts types and
-// operations. Subdirectories are not descended into; use the caller to handle
-// recursive patterns.
-func (p *Parser) ParseDir(dir string) error {
-	entries, err := os.ReadDir(dir)
-	if err != nil {
-		return err
-	}
-	for _, e := range entries {
-		if e.IsDir() || !strings.HasSuffix(e.Name(), ".go") || strings.HasSuffix(e.Name(), "_test.go") {
-			continue
-		}
-		if err := p.parseFile(filepath.Join(dir, e.Name())); err != nil {
-			// Best-effort: skip files that cannot be parsed (e.g. build-tag only)
-			continue
-		}
-	}
-	return nil
+// warnf logs a non-fatal diagnostic prefixed with the source position of pos.
+func (p *Parser) warnf(pos token.Pos, format string, args ...any) {
+	loc := p.fset.Position(pos)
+	log.Printf("apiary: warning: %s: "+format, append([]any{loc}, args...)...)
 }
 
 // Operations returns all operations found so far.
@@ -75,159 +66,10 @@ func (p *Parser) Enums() map[string]*EnumInfo {
 	return p.enums
 }
 
-// parseFile parses a single Go source file.
-func (p *Parser) parseFile(filename string) error {
-	file, err := goparser.ParseFile(p.fset, filename, nil, goparser.ParseComments)
-	if err != nil {
-		return err
-	}
-
-	// First pass: collect struct types and named type aliases.
-	for _, decl := range file.Decls {
-		genDecl, ok := decl.(*ast.GenDecl)
-		if !ok {
-			continue
-		}
-		if genDecl.Tok == token.TYPE {
-			for _, spec := range genDecl.Specs {
-				typeSpec, ok := spec.(*ast.TypeSpec)
-				if !ok {
-					continue
-				}
-				if structType, ok := typeSpec.Type.(*ast.StructType); ok {
-					p.types[typeSpec.Name.Name] = parseStructType(typeSpec.Name.Name, structType)
-				} else if ident, ok := typeSpec.Type.(*ast.Ident); ok {
-					// type Status string, type Role int, etc.
-					p.typeAliases[typeSpec.Name.Name] = ident.Name
-				}
-			}
-		}
-		if genDecl.Tok == token.CONST {
-			p.collectConsts(genDecl)
-		}
-	}
-
-	// Second pass: find annotated functions.
-	for _, decl := range file.Decls {
-		funcDecl, ok := decl.(*ast.FuncDecl)
-		if !ok {
-			continue
-		}
-		if op := p.parseFunction(funcDecl); op != nil {
-			p.operations = append(p.operations, op)
-		}
-	}
-	return nil
-}
-
-// collectConsts extracts const values grouped by their named type.
-// Handles string literals, integer literals, and iota expressions.
-func (p *Parser) collectConsts(decl *ast.GenDecl) {
-	var currentType string
-	var useIota bool
-	iotaVal := 0
-
-	for _, spec := range decl.Specs {
-		vs, ok := spec.(*ast.ValueSpec)
-		if !ok {
-			continue
-		}
-		if vs.Type != nil {
-			if ident, ok := vs.Type.(*ast.Ident); ok {
-				currentType = ident.Name
-			} else {
-				currentType = ""
-			}
-		}
-		if currentType == "" {
-			continue
-		}
-		baseType, ok := p.typeAliases[currentType]
-		if !ok {
-			iotaVal++
-			continue
-		}
-
-		// Determine if this line uses iota or has explicit values.
-		hasValues := len(vs.Values) > 0
-		if hasValues && isIotaExpr(vs.Values[0]) {
-			useIota = true
-		}
-
-		for i, nameIdent := range vs.Names {
-			if nameIdent.Name == "_" {
-				iotaVal++
-				continue
-			}
-
-			var val any
-			if useIota || !hasValues {
-				// iota-based or inherited iota line (no values = previous iota continues)
-				if baseType == "string" {
-					// string iota doesn't make sense, skip
-					iotaVal++
-					continue
-				}
-				val = iotaVal
-			} else if i < len(vs.Values) {
-				val = constLiteral(vs.Values[i], baseType)
-			}
-
-			if val == nil {
-				iotaVal++
-				continue
-			}
-
-			info := p.enums[currentType]
-			if info == nil {
-				info = &EnumInfo{BaseType: baseType}
-				p.enums[currentType] = info
-			}
-			info.Values = append(info.Values, val)
-			iotaVal++
-		}
-	}
-}
-
-// isIotaExpr returns true if the expression is `iota` or contains iota
-// (e.g. `iota + 1`).
-func isIotaExpr(expr ast.Expr) bool {
-	switch v := expr.(type) {
-	case *ast.Ident:
-		return v.Name == "iota"
-	case *ast.BinaryExpr:
-		return isIotaExpr(v.X) || isIotaExpr(v.Y)
-	case *ast.ParenExpr:
-		return isIotaExpr(v.X)
-	}
-	return false
-}
-
-// constLiteral extracts the Go literal value, returning string for string
-// base types and int for integer base types.
-func constLiteral(expr ast.Expr, baseType string) any {
-	switch v := expr.(type) {
-	case *ast.BasicLit:
-		s := v.Value
-		if len(s) >= 2 && s[0] == '"' && s[len(s)-1] == '"' {
-			return s[1 : len(s)-1]
-		}
-		// Integer literal
-		if baseType == "string" {
-			return s
-		}
-		n, err := strconv.Atoi(s)
-		if err != nil {
-			return s
-		}
-		return n
-	}
-	return nil
-}
-
-// parseFunction tries to extract an OperationInfo from a function declaration.
-// Returns nil if the function is not annotated or has the wrong signature.
-func (p *Parser) parseFunction(fn *ast.FuncDecl) *OperationInfo {
+// parseFunction tries to extract an OperationInfo from a function declaration
+// in the given type-checked package. Returns nil if the function is not
+// annotated or has an unsupported signature.
+func (p *Parser) parseFunction(pkg *packages.Package, fn *ast.FuncDecl) *OperationInfo {
 	if fn.Doc == nil {
 		return nil
 	}
@@ -245,13 +87,37 @@ func (p *Parser) parseFunction(fn *ast.FuncDecl) *OperationInfo {
 		return nil
 	}
 
+	// Surface annotation-level diagnostics (e.g. unknown keys) with position.
+	for _, w := range op.Warnings {
+		p.warnf(fn.Pos(), "%s: %s", fn.Name.Name, w)
+	}
+
+	// Default operationId; an explicit `operationId:` annotation wins. A stable,
+	// unique operationId lets client generators (openapi-generator, TS clients)
+	// name methods sensibly.
+	if op.OperationID == "" {
+		op.OperationID = defaultOperationID(receiverTypeName(fn), fn.Name.Name)
+	}
+
+	// Fall back to the Go doc comment for summary/description, so a handler's
+	// existing godoc doubles as its API docs — no need to repeat it in a
+	// `summary:` line. Explicit annotations always win.
+	if op.Summary == "" {
+		if summary, desc := leadingDocComment(lines, fn.Name.Name); summary != "" {
+			op.Summary = summary
+			if op.Description == "" {
+				op.Description = desc
+			}
+		}
+	}
+
 	// Framework handlers carry no type info in signature — types come
-	// from annotation request:/response: fields.
+	// from annotation request:/response: fields, resolved against the package.
 	if isGinHandler(fn) || isStdlibHTTPHandler(fn) {
 		return &OperationInfo{
 			Annotation:   op,
-			RequestType:  parseAnnotationTypeRef(op.Request),
-			ResponseType: parseAnnotationTypeRef(op.Response),
+			RequestType:  p.resolveAnnotationType(pkg, op.Request),
+			ResponseType: p.resolveAnnotationType(pkg, op.Response),
 		}
 	}
 
@@ -261,20 +127,17 @@ func (p *Parser) parseFunction(fn *ast.FuncDecl) *OperationInfo {
 	//   (ctx context.Context) (R, error)          — no request body
 	//   () (R, error)                             — no ctx, no body (rare)
 	if fn.Type == nil || fn.Type.Results == nil {
-		return nil
+		return p.warnBadSignature(fn)
 	}
 	results := fn.Type.Results.List
 	if len(results) != 2 {
-		return nil
+		return p.warnBadSignature(fn)
 	}
 	if !isErrorType(results[len(results)-1].Type) {
-		return nil
+		return p.warnBadSignature(fn)
 	}
 
-	respRef := parseTypeExpr(results[0].Type)
-	if respRef == nil {
-		return nil
-	}
+	respRef := p.typeRefFromAST(pkg, results[0].Type)
 
 	var reqRef *TypeRef
 	if fn.Type.Params != nil {
@@ -285,30 +148,24 @@ func (p *Parser) parseFunction(fn *ast.FuncDecl) *OperationInfo {
 		case 1:
 			if !isContextType(params[0].Type) {
 				// (req T) (R, error) — no ctx, has request
-				reqRef = parseTypeExpr(params[0].Type)
-				if reqRef == nil {
-					return nil
-				}
+				reqRef = p.typeRefFromAST(pkg, params[0].Type)
 			}
 			// else: (ctx) (R, error) — ctx only, no request
 		case 2:
 			if !isContextType(params[0].Type) {
-				return nil // first param must be context when there are 2 params
+				return p.warnBadSignature(fn) // first param must be context when there are 2 params
 			}
-			reqRef = parseTypeExpr(params[1].Type)
-			if reqRef == nil {
-				return nil
-			}
+			reqRef = p.typeRefFromAST(pkg, params[1].Type)
 		default:
-			return nil // more than 2 params — not supported
+			return p.warnBadSignature(fn) // more than 2 params — not supported
 		}
 	}
 
 	// Annotation request:/response: fields override inferred types.
-	if ann := parseAnnotationTypeRef(op.Request); ann != nil {
+	if ann := p.resolveAnnotationType(pkg, op.Request); ann != nil {
 		reqRef = ann
 	}
-	if ann := parseAnnotationTypeRef(op.Response); ann != nil {
+	if ann := p.resolveAnnotationType(pkg, op.Response); ann != nil {
 		respRef = ann
 	}
 
@@ -317,6 +174,16 @@ func (p *Parser) parseFunction(fn *ast.FuncDecl) *OperationInfo {
 		RequestType:  reqRef,
 		ResponseType: respRef,
 	}
+}
+
+// warnBadSignature reports that fn carries an apiary:operation marker but its
+// signature is not one apiary can map to an operation, then returns nil so the
+// caller drops it. Without this, the operation would vanish with no explanation.
+func (p *Parser) warnBadSignature(fn *ast.FuncDecl) *OperationInfo {
+	p.warnf(fn.Pos(),
+		"%s has an apiary:operation marker but an unsupported signature — handlers must be (R, error)-returning, gin, or net/http; see README",
+		fn.Name.Name)
+	return nil
 }
 
 // isGinHandler returns true when fn has the gin handler signature:
@@ -402,14 +269,99 @@ func parseAnnotationTypeRef(s string) *TypeRef {
 	if s == "" {
 		return nil
 	}
-	if strings.HasPrefix(s, "[]") {
-		elem := strings.TrimPrefix(s, "[]")
+	if elem, ok := strings.CutPrefix(s, "[]"); ok {
 		return &TypeRef{Name: "array", IsSlice: true, Elem: &TypeRef{Name: strings.TrimSpace(elem)}}
 	}
-	if strings.HasPrefix(s, "*") {
-		return &TypeRef{Name: strings.TrimPrefix(s, "*"), IsPtr: true}
+	if name, ok := strings.CutPrefix(s, "*"); ok {
+		return &TypeRef{Name: name, IsPtr: true}
 	}
 	return &TypeRef{Name: s}
+}
+
+// lowerFirst returns s with its first rune lower-cased ("CreateUser" →
+// "createUser").
+func lowerFirst(s string) string {
+	if s == "" {
+		return s
+	}
+	r := []rune(s)
+	r[0] = unicode.ToLower(r[0])
+	return string(r)
+}
+
+// leadingDocComment extracts a summary and description from the human Go doc
+// comment that precedes the apiary:operation marker. The first prose line
+// becomes the summary; any following prose lines become the description. A
+// leading function name is stripped per Go convention ("Login authenticates a
+// user" → "Authenticates a user"). Returns empty strings when there is no prose.
+func leadingDocComment(lines []string, funcName string) (summary, description string) {
+	var prose []string
+	for _, line := range lines {
+		if strings.HasPrefix(line, "apiary:operation ") {
+			break // the godoc ends where the apiary block begins
+		}
+		if line != "" {
+			prose = append(prose, line)
+		}
+	}
+	if len(prose) == 0 {
+		return "", ""
+	}
+	first := prose[0]
+	if rest, ok := strings.CutPrefix(first, funcName+" "); ok && rest != "" {
+		first = capitalizeFirst(rest)
+	}
+	if len(prose) > 1 {
+		description = strings.Join(prose[1:], " ")
+	}
+	return first, description
+}
+
+// capitalizeFirst upper-cases the first rune of s.
+func capitalizeFirst(s string) string {
+	if s == "" {
+		return s
+	}
+	r := []rune(s)
+	r[0] = unicode.ToUpper(r[0])
+	return string(r)
+}
+
+// receiverTypeName returns the (unqualified) receiver type name of a method, or
+// "" for a free function. "func (h *TaskHandler) List" → "TaskHandler".
+func receiverTypeName(fn *ast.FuncDecl) string {
+	if fn.Recv == nil || len(fn.Recv.List) == 0 {
+		return ""
+	}
+	expr := fn.Recv.List[0].Type
+	if star, ok := expr.(*ast.StarExpr); ok {
+		expr = star.X
+	}
+	if id, ok := expr.(*ast.Ident); ok {
+		return id.Name
+	}
+	return ""
+}
+
+// opIDReceiverSuffixes are dropped from a receiver type before composing an
+// operationId, so "TaskHandler.List" reads as "taskList", not "taskHandlerList".
+var opIDReceiverSuffixes = []string{"Handler", "Controller", "Service", "Server"}
+
+// defaultOperationID derives a default operationId from a method's receiver and
+// name. Including the receiver keeps ids unique across handlers that share a
+// method name (TaskHandler.List vs CommentHandler.List → taskList / commentList).
+// Free functions fall back to the lower-camel function name.
+func defaultOperationID(receiver, funcName string) string {
+	for _, suf := range opIDReceiverSuffixes {
+		if trimmed, ok := strings.CutSuffix(receiver, suf); ok {
+			receiver = trimmed
+			break
+		}
+	}
+	if receiver != "" {
+		return lowerFirst(receiver) + funcName
+	}
+	return lowerFirst(funcName)
 }
 
 // isContextType returns true when expr is context.Context.

@@ -5,6 +5,7 @@ info:
 paths:
     /api/v1/auth/telegram:
         post:
+            operationId: authTelegramAuth
             summary: Аутентификация через Telegram
             description: Принимает initData из Telegram WebApp, верифицирует HMAC-SHA256 подпись.
             tags:
@@ -43,6 +44,7 @@ paths:
                                 $ref: '#/components/schemas/ErrorResponse'
     /api/v1/products:
         get:
+            operationId: productListProducts
             summary: Список товаров
             description: Поддерживает пагинацию и полнотекстовый поиск. Цены возвращаются в валюте из заголовка X-Currency.
             tags:
@@ -61,14 +63,16 @@ paths:
                   schema:
                     type: integer
                     format: int32
-                  example: "1"
+                    default: 1
+                  example: 1
                 - name: page_size
                   in: query
                   required: false
                   schema:
                     type: integer
                     format: int32
-                  example: "20"
+                    default: 20
+                  example: 20
                 - name: search
                   in: query
                   required: false
@@ -96,6 +100,7 @@ paths:
                                 $ref: '#/components/schemas/ErrorResponse'
     /api/v1/users:
         post:
+            operationId: userCreateUser
             summary: Создать пользователя
             tags:
                 - users
@@ -132,6 +137,7 @@ paths:
                                 $ref: '#/components/schemas/ErrorResponse'
     /api/v1/users/{id}:
         get:
+            operationId: userGetUser
             summary: Профиль пользователя
             tags:
                 - users
@@ -142,7 +148,7 @@ paths:
                   schema:
                     type: integer
                     format: int64
-                  example: "42"
+                  example: 42
             responses:
                 "200":
                     description: OK
@@ -176,6 +182,7 @@ paths:
                                 $ref: '#/components/schemas/ErrorResponse'
     /health:
         get:
+            operationId: healthHealth
             summary: Healthcheck
             tags:
                 - infra
@@ -192,8 +199,15 @@ components:
         CreateUserRequest:
             type: object
             properties:
+                age:
+                    type: [integer, "null"]
+                    format: int32
+                    description: Возраст (необязательно)
+                    minimum: 13
+                    maximum: 120
                 email:
                     type: string
+                    format: email
                     example: larry@example.com
                 first_name:
                     type: string
@@ -201,9 +215,19 @@ components:
                 last_name:
                     type: string
                     example: Сомик
+                role:
+                    type: string
+                    description: Роль пользователя
+                    example: user
+                    enum:
+                        - admin
+                        - user
+                        - guest
                 username:
                     type: string
                     example: larry_somik
+                    minLength: 3
+                    maxLength: 32
             required:
                 - username
                 - email
@@ -263,7 +287,7 @@ components:
                 price:
                     type: number
                     format: double
-                    example: "1990.00"
+                    example: 1990
         TelegramAuthRequest:
             type: object
             properties:
@@ -280,7 +304,7 @@ components:
                     type: integer
                     format: int32
                     description: TTL токена в секундах
-                    example: "3600"
+                    example: 3600
                 is_new_user:
                     type: boolean
                 user:

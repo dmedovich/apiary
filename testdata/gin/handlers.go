@@ -1,10 +1,9 @@
-//go:build ignore
-
 // Package gin — пример того же task-manager, но с gin-хендлерами.
 //
-// Запуск:
+// Это отдельный вложенный модуль (свой go.mod), чтобы реальная зависимость от
+// gin не попадала в основной модуль apiary. Генерация спеки:
 //
-//	apiary -security bearer -title "Task Manager API (gin)" -version "1.0.0" -out docs/tasks_gin.yaml ./testdata/gin
+//	cd testdata/gin && apiary -security bearer -title "Task Manager API (gin)" -version "1.0.0" -out ../../docs/tasks_gin.yaml .
 package gin
 
 import "github.com/gin-gonic/gin"

@@ -1,11 +1,49 @@
 package schema_test
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/honeynil/apiary/internal/parser"
 	"github.com/honeynil/apiary/internal/schema"
+	"gopkg.in/yaml.v3"
 )
+
+func TestSchema_NullableMarshal(t *testing.T) {
+	t.Run("scalar nullable renders type sequence", func(t *testing.T) {
+		out, err := yaml.Marshal(&schema.Schema{Type: "string", Nullable: true})
+		if err != nil {
+			t.Fatal(err)
+		}
+		got := strings.TrimSpace(string(out))
+		// OpenAPI 3.1: type must be [string, "null"] with null quoted.
+		if !strings.Contains(got, `[string, "null"]`) {
+			t.Errorf("expected type sequence with quoted null, got:\n%s", got)
+		}
+	})
+
+	t.Run("non-nullable is a plain scalar type", func(t *testing.T) {
+		out, err := yaml.Marshal(&schema.Schema{Type: "string"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		got := strings.TrimSpace(string(out))
+		if got != "type: string" {
+			t.Errorf("expected plain scalar type, got: %q", got)
+		}
+	})
+
+	t.Run("nullable without a type is left untouched", func(t *testing.T) {
+		// e.g. a $ref schema marked nullable must not grow a bogus type seq.
+		out, err := yaml.Marshal(&schema.Schema{Ref: "#/components/schemas/X", Nullable: true})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if strings.Contains(string(out), "null") {
+			t.Errorf("ref schema should not gain a null type, got:\n%s", out)
+		}
+	})
+}
 
 func TestBuildPrimitiveSchemas(t *testing.T) {
 	b := schema.NewBuilder(nil, nil)
@@ -277,6 +315,102 @@ func TestBuildEnumField(t *testing.T) {
 	}
 	if statusProp.Enum[0] != "active" || statusProp.Enum[1] != "archived" || statusProp.Enum[2] != "draft" {
 		t.Errorf("unexpected enum values: %v", statusProp.Enum)
+	}
+}
+
+func TestBuildFieldConstraints(t *testing.T) {
+	types := map[string]*parser.TypeInfo{
+		"Form": {
+			Name: "Form",
+			Fields: []*parser.FieldInfo{
+				{Name: "Email", JSONName: "email", Type: &parser.TypeRef{Name: "string"}, Validate: "required,email"},
+				{Name: "Age", JSONName: "age", Type: &parser.TypeRef{Name: "int"}, Validate: "gte=0,lte=120"},
+				{Name: "Name", JSONName: "name", Type: &parser.TypeRef{Name: "string"}, Validate: "min=1,max=64"},
+				{Name: "Role", JSONName: "role", Type: &parser.TypeRef{Name: "string"}, Validate: "oneof=admin user guest"},
+				{Name: "Tags", JSONName: "tags", Type: &parser.TypeRef{Name: "array", IsSlice: true, Elem: &parser.TypeRef{Name: "string"}}, Validate: "max=5"},
+				{Name: "Nick", JSONName: "nick", Type: &parser.TypeRef{Name: "string", IsPtr: true}},
+			},
+		},
+	}
+	b := schema.NewBuilder(types, nil)
+	b.BuildSchema(&parser.TypeRef{Name: "Form"})
+	props := b.Components()["Form"].Properties
+
+	if props["email"].Format != "email" {
+		t.Errorf("email format = %q", props["email"].Format)
+	}
+	if props["age"].Minimum != 0 || props["age"].Maximum != 120 {
+		t.Errorf("age bounds = %v..%v", props["age"].Minimum, props["age"].Maximum)
+	}
+	if props["name"].MinLength == nil || *props["name"].MinLength != 1 ||
+		props["name"].MaxLength == nil || *props["name"].MaxLength != 64 {
+		t.Errorf("name length bounds wrong: %+v", props["name"])
+	}
+	if len(props["role"].Enum) != 3 || props["role"].Enum[0] != "admin" {
+		t.Errorf("role enum = %v", props["role"].Enum)
+	}
+	if props["tags"].MaxItems == nil || *props["tags"].MaxItems != 5 {
+		t.Errorf("tags maxItems wrong: %+v", props["tags"])
+	}
+	if !props["nick"].Nullable {
+		t.Error("nick (*string) should be nullable")
+	}
+}
+
+func TestCoerceScalar(t *testing.T) {
+	cases := []struct {
+		raw, typ string
+		want     any
+	}{
+		{"42", "integer", 42},
+		{"19.99", "number", 19.99},
+		{"true", "boolean", true},
+		{"widget", "string", "widget"},
+		{"", "integer", nil},
+		{"notanum", "integer", "notanum"}, // unparseable → stays string
+	}
+	for _, c := range cases {
+		if got := schema.CoerceScalar(c.raw, c.typ); got != c.want {
+			t.Errorf("CoerceScalar(%q, %q) = %v (%T), want %v", c.raw, c.typ, got, got, c.want)
+		}
+	}
+}
+
+func TestBuildStructPointerNullable(t *testing.T) {
+	types := map[string]*parser.TypeInfo{
+		"Order": {
+			Name: "Order",
+			Fields: []*parser.FieldInfo{
+				{Name: "Ship", JSONName: "ship", Doc: "Optional address",
+					Type: &parser.TypeRef{Name: "Address", IsPtr: true}},
+			},
+		},
+		"Address": {Name: "Address", Fields: []*parser.FieldInfo{
+			{Name: "City", JSONName: "city", Type: &parser.TypeRef{Name: "string"}},
+		}},
+	}
+	b := schema.NewBuilder(types, nil)
+	b.BuildSchema(&parser.TypeRef{Name: "Order"})
+
+	ship := b.Components()["Order"].Properties["ship"]
+	if ship == nil {
+		t.Fatal("missing 'ship' property")
+	}
+	if len(ship.AnyOf) != 2 {
+		t.Fatalf("expected anyOf with 2 entries, got %+v", ship)
+	}
+	if ship.AnyOf[0].Ref != "#/components/schemas/Address" {
+		t.Errorf("first anyOf should $ref Address, got %q", ship.AnyOf[0].Ref)
+	}
+	if ship.AnyOf[1].Type != "null" {
+		t.Errorf("second anyOf should be type null, got %q", ship.AnyOf[1].Type)
+	}
+	if ship.Description != "Optional address" {
+		t.Errorf("description should be preserved on the wrapper, got %q", ship.Description)
+	}
+	// The Address component itself must still be registered.
+	if _, ok := b.Components()["Address"]; !ok {
+		t.Error("Address component not registered")
 	}
 }
 

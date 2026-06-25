@@ -18,6 +18,7 @@ type ErrorSpec struct {
 type Operation struct {
 	Method      string
 	Path        string
+	OperationID string
 	Summary     string
 	Description string
 	Tags        []string
@@ -31,6 +32,26 @@ type Operation struct {
 	// Supports plain names ("UserDTO") and slice syntax ("[]UserDTO").
 	Request  string
 	Response string
+	// Warnings holds non-fatal diagnostics produced while parsing the marker
+	// block (e.g. an unrecognized key that looks like a typo). The caller is
+	// expected to surface these with source position information.
+	Warnings []string
+}
+
+// looksLikeKey reports whether s resembles an annotation key rather than prose.
+// Annotation keys are single all-lowercase ASCII words (e.g. "summary"), so a
+// "key: value" line whose key contains spaces or capitals (e.g. "Note: ...",
+// "See also: ...") is treated as free text and never warned about.
+func looksLikeKey(s string) bool {
+	if s == "" {
+		return false
+	}
+	for _, r := range s {
+		if r < 'a' || r > 'z' {
+			return false
+		}
+	}
+	return true
 }
 
 // Parse parses comment lines (without the "//" prefix and leading space) into
@@ -43,8 +64,7 @@ func Parse(lines []string) (*Operation, bool) {
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
 
-		if strings.HasPrefix(line, "apiary:operation ") {
-			rest := strings.TrimPrefix(line, "apiary:operation ")
+		if rest, ok := strings.CutPrefix(line, "apiary:operation "); ok {
 			parts := strings.Fields(rest)
 			if len(parts) < 2 {
 				continue
@@ -64,6 +84,8 @@ func Parse(lines []string) (*Operation, bool) {
 		value := strings.TrimSpace(line[idx+1:])
 
 		switch key {
+		case "operationId":
+			op.OperationID = value
 		case "summary":
 			op.Summary = value
 		case "description":
@@ -103,6 +125,14 @@ func Parse(lines []string) (*Operation, bool) {
 			op.Request = value
 		case "response":
 			op.Response = value
+		default:
+			// An unrecognized but key-shaped line is almost always a typo
+			// (e.g. "summry:" instead of "summary:"). Free-form prose with a
+			// colon is excluded by looksLikeKey.
+			if looksLikeKey(key) {
+				op.Warnings = append(op.Warnings,
+					"unknown annotation key \""+key+"\" — ignored (did you mean one of summary, description, tags, errors, security, request, response?)")
+			}
 		}
 	}
 

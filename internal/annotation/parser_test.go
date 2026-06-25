@@ -1,6 +1,7 @@
 package annotation_test
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/honeynil/apiary/internal/annotation"
@@ -62,6 +63,40 @@ func TestParse_ErrorsWithCustomSchema(t *testing.T) {
 	}
 	if op.Errors[2].Code != 500 || op.Errors[2].Schema != "" {
 		t.Errorf("expected {500 }, got %+v", op.Errors[2])
+	}
+}
+
+func TestParse_UnknownKeyWarns(t *testing.T) {
+	lines := []string{
+		"apiary:operation GET /x",
+		"summry: typo here", // misspelled "summary"
+	}
+	op, ok := annotation.Parse(lines)
+	if !ok {
+		t.Fatal("expected parse to succeed")
+	}
+	if len(op.Warnings) != 1 {
+		t.Fatalf("expected 1 warning, got %d: %v", len(op.Warnings), op.Warnings)
+	}
+	if !strings.Contains(op.Warnings[0], "summry") {
+		t.Errorf("warning should name the bad key, got %q", op.Warnings[0])
+	}
+}
+
+func TestParse_ProseWithColonDoesNotWarn(t *testing.T) {
+	// Free-form doc lines with a colon must not be mistaken for annotation keys.
+	lines := []string{
+		"apiary:operation GET /x",
+		"summary: real summary",
+		"Note: this handler is internal", // capitalized → prose
+		"See https://example.com for details",
+	}
+	op, ok := annotation.Parse(lines)
+	if !ok {
+		t.Fatal("expected parse to succeed")
+	}
+	if len(op.Warnings) != 0 {
+		t.Errorf("expected no warnings for prose, got %v", op.Warnings)
 	}
 }
 

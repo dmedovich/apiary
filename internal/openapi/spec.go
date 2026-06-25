@@ -11,9 +11,16 @@ type SecurityRequirement map[string][]string
 type OpenAPI struct {
 	OpenAPI    string              `yaml:"openapi"`
 	Info       Info                `yaml:"info"`
+	Servers    []Server            `yaml:"servers,omitempty"`
 	Paths      map[string]PathItem `yaml:"paths,omitempty"`
-	Security   interface{}         `yaml:"security,omitempty"` // []SecurityRequirement
+	Security   any                 `yaml:"security,omitempty"` // []SecurityRequirement
 	Components *Components         `yaml:"components,omitempty"`
+}
+
+// Server describes a single base URL the API is served from.
+type Server struct {
+	URL         string `yaml:"url"`
+	Description string `yaml:"description,omitempty"`
 }
 
 // Info holds API metadata.
@@ -34,6 +41,7 @@ type PathItem struct {
 
 // Operation describes a single HTTP operation on a path.
 type Operation struct {
+	OperationID string               `yaml:"operationId,omitempty"`
 	Summary     string               `yaml:"summary,omitempty"`
 	Description string               `yaml:"description,omitempty"`
 	Tags        []string             `yaml:"tags,omitempty"`

@@ -19,10 +19,12 @@ type UserResponse struct {
 }
 
 type CreateUserRequest struct {
-	Username  string `json:"username"   validate:"required" example:"larry_somik"`
-	Email     string `json:"email"      validate:"required" example:"larry@example.com"`
+	Username  string `json:"username"   validate:"required,min=3,max=32" example:"larry_somik"`
+	Email     string `json:"email"      validate:"required,email" example:"larry@example.com"`
 	FirstName string `json:"first_name" example:"Ларри"`
 	LastName  string `json:"last_name"  example:"Сомик"`
+	Role      string `json:"role"       validate:"oneof=admin user guest" doc:"Роль пользователя" example:"user"`
+	Age       *int   `json:"age,omitempty" validate:"gte=13,lte=120" doc:"Возраст (необязательно)"`
 }
 
 type ListProductsRequest struct {
