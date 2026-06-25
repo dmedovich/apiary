@@ -93,7 +93,6 @@ func TestBuild_BasicOperation(t *testing.T) {
 		t.Errorf("unexpected tags: %v", item.Post.Tags)
 	}
 
-	// 200 + 400 + 401
 	if len(item.Post.Responses) != 3 {
 		t.Errorf("expected 3 responses, got %d", len(item.Post.Responses))
 	}
@@ -217,7 +216,7 @@ func TestBuild_QueryParamConstraints(t *testing.T) {
 	if len(byName["sort"].Schema.Enum) != 2 {
 		t.Errorf("sort enum = %v", byName["sort"].Schema.Enum)
 	}
-	// Description/example must stay on the Parameter, not duplicated onto schema.
+
 	if page.Description != "" {
 		t.Errorf("param schema must not carry description, got %q", page.Description)
 	}
@@ -284,8 +283,6 @@ func TestBuild_PathParameters(t *testing.T) {
 }
 
 func TestBuild_PathOnlyRequestHasNoBody(t *testing.T) {
-	// DELETE /tasks/{id} bound to a request whose only field is a path param
-	// must not produce an (empty) request body.
 	ops := []*parser.OperationInfo{
 		{
 			Annotation:   &annotation.Operation{Method: "DELETE", Path: "/tasks/{id}"},
@@ -316,7 +313,7 @@ func TestBuild_PathOnlyRequestHasNoBody(t *testing.T) {
 	if len(del.Parameters) != 1 || del.Parameters[0].In != "path" {
 		t.Errorf("expected a single path parameter, got %+v", del.Parameters)
 	}
-	// The empty placeholder schema must not be registered either.
+
 	if spec.Components != nil {
 		if _, ok := spec.Components.Schemas["DeleteTaskRequest"]; ok {
 			t.Error("path-only request type should not be registered as a component schema")
@@ -367,7 +364,7 @@ func TestBuild_DuplicateOperationWarns(t *testing.T) {
 	if !strings.Contains(out, "duplicate operation") {
 		t.Errorf("expected duplicate-operation warning, got: %q", out)
 	}
-	// Last definition wins.
+
 	if spec.Paths["/dup"].Get == nil || spec.Paths["/dup"].Get.Summary != "second" {
 		t.Errorf("expected the second definition to win, got %+v", spec.Paths["/dup"].Get)
 	}

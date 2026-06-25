@@ -10,12 +10,12 @@ func TestChooseFormat(t *testing.T) {
 	cases := []struct {
 		flagFmt, cfgFmt, out, want string
 	}{
-		{"json", "", "x.yaml", "json"},     // flag wins
-		{"", "json", "x.yaml", "json"},     // config next
-		{"", "", "x.json", "json"},         // inferred from extension
-		{"", "", "x.JSON", "json"},         // case-insensitive
-		{"", "", "openapi.yaml", "yaml"},   // default
-		{"yaml", "json", "x.json", "yaml"}, // flag beats everything
+		{"json", "", "x.yaml", "json"},
+		{"", "json", "x.yaml", "json"},
+		{"", "", "x.json", "json"},
+		{"", "", "x.JSON", "json"},
+		{"", "", "openapi.yaml", "yaml"},
+		{"yaml", "json", "x.json", "yaml"},
 	}
 	for _, c := range cases {
 		if got := chooseFormat(c.flagFmt, c.cfgFmt, c.out); got != c.want {

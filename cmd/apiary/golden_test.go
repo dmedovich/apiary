@@ -6,12 +6,6 @@ import (
 	"testing"
 )
 
-// TestGolden asserts that the full generation pipeline reproduces the committed
-// docs/*.yaml byte-for-byte, using the same flags as `make generate`. It is the
-// regression guard for generated output: any change to the generator or the
-// example sources must be accompanied by regenerated docs.
-//
-// To refresh the snapshots: `make generate` (or `UPDATE_GOLDEN=1 go test ./cmd/apiary`).
 func TestGolden(t *testing.T) {
 	cases := []struct {
 		name     string
@@ -32,8 +26,6 @@ func TestGolden(t *testing.T) {
 			golden:   "../../docs/tasks.yaml",
 		},
 		{
-			// gin example lives in a nested module (its own go.mod with the real
-			// gin dependency), so it is loaded from its own directory.
 			name:     "gin",
 			patterns: []string{"."},
 			opt:      specOptions{title: "Task Manager API (gin)", version: "1.0.0", security: []string{"bearer"}, dir: "../../testdata/gin"},

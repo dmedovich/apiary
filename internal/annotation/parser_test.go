@@ -69,7 +69,7 @@ func TestParse_ErrorsWithCustomSchema(t *testing.T) {
 func TestParse_UnknownKeyWarns(t *testing.T) {
 	lines := []string{
 		"apiary:operation GET /x",
-		"summry: typo here", // misspelled "summary"
+		"summry: typo here",
 	}
 	op, ok := annotation.Parse(lines)
 	if !ok {
@@ -84,11 +84,10 @@ func TestParse_UnknownKeyWarns(t *testing.T) {
 }
 
 func TestParse_ProseWithColonDoesNotWarn(t *testing.T) {
-	// Free-form doc lines with a colon must not be mistaken for annotation keys.
 	lines := []string{
 		"apiary:operation GET /x",
 		"summary: real summary",
-		"Note: this handler is internal", // capitalized → prose
+		"Note: this handler is internal",
 		"See https://example.com for details",
 	}
 	op, ok := annotation.Parse(lines)

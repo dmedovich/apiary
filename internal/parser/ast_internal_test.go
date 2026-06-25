@@ -47,9 +47,9 @@ func TestDefaultOperationID(t *testing.T) {
 		{"AuthHandler", "Login", "authLogin"},
 		{"UserController", "Create", "userCreate"},
 		{"AccountService", "Get", "accountGet"},
-		{"", "ListUsers", "listUsers"}, // free function
-		{"Handler", "Ping", "ping"},    // receiver is only the suffix → drop it
-		{"API", "Health", "aPIHealth"}, // no known suffix, kept as-is
+		{"", "ListUsers", "listUsers"},
+		{"Handler", "Ping", "ping"},
+		{"API", "Health", "aPIHealth"},
 	}
 	for _, c := range cases {
 		if got := defaultOperationID(c.receiver, c.funcName); got != c.want {

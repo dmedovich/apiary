@@ -11,15 +11,11 @@ import (
 	"github.com/honeynil/apiary/internal/parser"
 )
 
-// loadSrc writes src as a single file into a throwaway module and loads it.
 func loadSrc(t *testing.T, src string) *parser.Parser {
 	t.Helper()
 	return loadFiles(t, map[string]string{"code.go": src})
 }
 
-// loadFiles writes the given files (relative paths → contents) into a temporary
-// module and loads it with the go/types-based parser. A go.mod is synthesized
-// unless one is provided.
 func loadFiles(t *testing.T, files map[string]string) *parser.Parser {
 	t.Helper()
 	dir := t.TempDir()
@@ -42,7 +38,6 @@ func loadFiles(t *testing.T, files map[string]string) *parser.Parser {
 	return p
 }
 
-// captureLog redirects the standard logger to a buffer for the duration of fn.
 func captureLog(t *testing.T, fn func()) string {
 	t.Helper()
 	var buf bytes.Buffer
@@ -291,8 +286,6 @@ type ProductsRequest struct {
 }
 
 func TestLoad_GinHandler(t *testing.T) {
-	// gin is stubbed with a local package named "gin" so the test resolves
-	// offline; handler detection is syntactic on the "gin" identifier.
 	p := loadFiles(t, map[string]string{
 		"gin/gin.go": "package gin\n\ntype Context struct{}\n",
 		"code.go": `package sample
@@ -506,8 +499,6 @@ type HealthResponse struct{ Status string ` + "`json:\"status\"`" + ` }
 }
 
 func TestLoad_CrossPackageType(t *testing.T) {
-	// A request type defined in another in-module package must resolve to a
-	// real schema, not a placeholder.
 	p := loadFiles(t, map[string]string{
 		"dto/dto.go": `package dto
 

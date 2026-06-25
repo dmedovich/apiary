@@ -16,7 +16,7 @@ func TestSchema_NullableMarshal(t *testing.T) {
 			t.Fatal(err)
 		}
 		got := strings.TrimSpace(string(out))
-		// OpenAPI 3.1: type must be [string, "null"] with null quoted.
+
 		if !strings.Contains(got, `[string, "null"]`) {
 			t.Errorf("expected type sequence with quoted null, got:\n%s", got)
 		}
@@ -34,7 +34,6 @@ func TestSchema_NullableMarshal(t *testing.T) {
 	})
 
 	t.Run("nullable without a type is left untouched", func(t *testing.T) {
-		// e.g. a $ref schema marked nullable must not grow a bogus type seq.
 		out, err := yaml.Marshal(&schema.Schema{Ref: "#/components/schemas/X", Nullable: true})
 		if err != nil {
 			t.Fatal(err)
@@ -184,7 +183,6 @@ func TestBuildNestedStructSchema(t *testing.T) {
 }
 
 func TestBuildRecursiveStructNoPanic(t *testing.T) {
-	// Node.Next → *Node (recursive)
 	types := map[string]*parser.TypeInfo{
 		"Node": {
 			Name: "Node",
@@ -196,7 +194,7 @@ func TestBuildRecursiveStructNoPanic(t *testing.T) {
 	}
 
 	b := schema.NewBuilder(types, nil)
-	// Must not panic or loop forever.
+
 	s := b.BuildSchema(&parser.TypeRef{Name: "Node"})
 	if s == nil {
 		t.Fatal("expected non-nil schema")
@@ -240,8 +238,6 @@ func TestBuildEmbeddedStructSchema(t *testing.T) {
 }
 
 func TestBuildEmbeddedOnlySchema(t *testing.T) {
-	// When there are only embedded fields and no own fields, allOf should not
-	// include an extra empty object schema.
 	types := map[string]*parser.TypeInfo{
 		"A":    {Name: "A", Fields: []*parser.FieldInfo{{Name: "X", JSONName: "x", Type: &parser.TypeRef{Name: "string"}}}},
 		"Wrap": {Name: "Wrap", Embedded: []string{"A"}},
@@ -367,7 +363,7 @@ func TestCoerceScalar(t *testing.T) {
 		{"true", "boolean", true},
 		{"widget", "string", "widget"},
 		{"", "integer", nil},
-		{"notanum", "integer", "notanum"}, // unparseable → stays string
+		{"notanum", "integer", "notanum"},
 	}
 	for _, c := range cases {
 		if got := schema.CoerceScalar(c.raw, c.typ); got != c.want {
@@ -408,7 +404,7 @@ func TestBuildStructPointerNullable(t *testing.T) {
 	if ship.Description != "Optional address" {
 		t.Errorf("description should be preserved on the wrapper, got %q", ship.Description)
 	}
-	// The Address component itself must still be registered.
+
 	if _, ok := b.Components()["Address"]; !ok {
 		t.Error("Address component not registered")
 	}

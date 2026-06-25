@@ -9,7 +9,6 @@ import (
 	"github.com/honeynil/apiary/internal/schema"
 )
 
-// builtinSchemes maps short names to their SecurityScheme definitions.
 var builtinSchemes = map[string]*SecurityScheme{
 	"bearer": {
 		Type:         "http",
@@ -31,11 +30,10 @@ var builtinSchemes = map[string]*SecurityScheme{
 }
 
 type securityEntry struct {
-	name    string // key used in the document (like "adminAuth")
-	builtin string // builtin type: "bearer", "basic", "apikey"
+	name    string
+	builtin string
 }
 
-// Builder assembles an OpenAPI 3.1 document from parsed operations.
 type Builder struct {
 	title       string
 	version     string
@@ -53,8 +51,6 @@ func (b *Builder) WithDescription(desc string) *Builder {
 	return b
 }
 
-// WithServer appends a server URL to the document's servers list. Empty URLs
-// are ignored.
 func (b *Builder) WithServer(url string) *Builder {
 	if url != "" {
 		b.servers = append(b.servers, Server{URL: url})
@@ -86,7 +82,7 @@ func (b *Builder) Build(operations []*parser.OperationInfo, types map[string]*pa
 		Paths:   make(map[string]PathItem),
 	}
 
-	seenOpID := make(map[string]string) // operationId → "METHOD path" of first use
+	seenOpID := make(map[string]string)
 	for _, opInfo := range operations {
 		op, err := b.buildOperation(opInfo, sb, types)
 		if err != nil {
@@ -126,15 +122,12 @@ func (b *Builder) Build(operations []*parser.OperationInfo, types map[string]*pa
 		spec.Paths[path] = item
 	}
 
-	// Build components
 	components := &Components{Schemas: sb.Components()}
 
-	// Warn about cross-package types that were not resolved.
 	for _, unknown := range sb.UnknownTypes() {
 		log.Printf("apiary: warning: type %q not found — add its package to the scan pattern", unknown)
 	}
 
-	// Register security schemes.
 	if len(b.security) > 0 {
 		components.SecuritySchemes = make(map[string]*SecurityScheme)
 		var globalReqs []SecurityRequirement
@@ -158,7 +151,6 @@ func (b *Builder) Build(operations []*parser.OperationInfo, types map[string]*pa
 	return spec, nil
 }
 
-// buildOperation converts a single OperationInfo into an OpenAPI Operation.
 func (b *Builder) buildOperation(
 	opInfo *parser.OperationInfo,
 	sb *schema.Builder,
@@ -175,7 +167,6 @@ func (b *Builder) buildOperation(
 		Responses:   make(map[string]*Response),
 	}
 
-	// Per-operation security override (nil means inherit the global setting).
 	if sec := operationSecurity(ann.Security); sec != nil {
 		op.Security = sec
 	}
@@ -198,7 +189,6 @@ func (b *Builder) buildOperation(
 				})
 			}
 
-			// Classify fields by where they belong in the OpenAPI operation.
 			var pathFields, queryFields, headerFields, bodyFields []*parser.FieldInfo
 			if typeInfo != nil {
 				for _, f := range typeInfo.Fields {
@@ -215,7 +205,6 @@ func (b *Builder) buildOperation(
 				}
 			}
 
-			// Emit explicit parameters grouped path → header → query.
 			for _, f := range pathFields {
 				addParam(f.PathParam, "path", true, f)
 			}
@@ -227,7 +216,6 @@ func (b *Builder) buildOperation(
 			}
 
 			if method == "GET" {
-				// GET has no body — remaining fields become query parameters.
 				for _, f := range bodyFields {
 					addParam(f.JSONName, "query", f.Required, f)
 				}
@@ -261,11 +249,6 @@ func (b *Builder) buildOperation(
 	return op, nil
 }
 
-// operationSecurity translates a per-operation `security:` annotation into the
-// value for Operation.Security. It returns:
-//   - nil           when no override is given (inherit the global requirement),
-//   - an empty slice for `security: none` (explicitly public, overrides global),
-//   - the listed schemes otherwise.
 func operationSecurity(security []string) any {
 	if len(security) == 0 {
 		return nil
@@ -280,30 +263,18 @@ func operationSecurity(security []string) any {
 	return reqs
 }
 
-// needsRequestBody decides whether a non-GET operation carries a JSON body.
-// A body is emitted when there are explicit body fields, or when the request
-// type is opaque — not introspectable (e.g. an external type referenced by a
-// gin/net-http handler), so we cannot tell its shape and assume a body.
-//
-// A type whose fields are exclusively path, query and/or header parameters
-// carries no body: e.g. DELETE /users/{id} bound to {ID int64 `path:"id"`}
-// produces no requestBody.
 func needsRequestBody(typeInfo *parser.TypeInfo, bodyFieldCount int) bool {
 	return bodyFieldCount > 0 || typeInfo == nil
 }
 
-// jsonContent wraps a schema as a single application/json content map, the
-// shape every request body and response in this generator uses.
 func jsonContent(s *schema.Schema) map[string]*MediaType {
 	return map[string]*MediaType{"application/json": {Schema: s}}
 }
 
-// jsonBody wraps a schema as a required application/json request body.
 func jsonBody(s *schema.Schema) *RequestBody {
 	return &RequestBody{Required: true, Content: jsonContent(s)}
 }
 
-// httpStatusTexts maps the status codes apiary emits to their reason phrases.
 var httpStatusTexts = map[int]string{
 	400: "Bad Request",
 	401: "Unauthorized",

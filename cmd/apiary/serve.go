@@ -8,9 +8,6 @@ import (
 	"strings"
 )
 
-// swaggerUIHTML is a self-contained page that loads Swagger UI from a public
-// CDN and points it at the spec served by apiary. Loading the assets from a CDN
-// keeps apiary itself dependency- and asset-free (no embedded ~1.5MB bundle).
 const swaggerUIHTML = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -28,9 +25,6 @@ const swaggerUIHTML = `<!DOCTYPE html>
 </html>
 `
 
-// runServe implements `apiary serve`: it serves the generated spec plus a
-// Swagger UI page, regenerating the spec on every request so source edits show
-// on refresh. Uses only the standard library.
 func runServe(args []string) {
 	fs := flag.NewFlagSet("serve", flag.ExitOnError)
 	addr := fs.String("addr", ":8080", "address to listen on")
@@ -103,8 +97,6 @@ func runServe(args []string) {
 	}
 }
 
-// displayURL turns a listen address into a clickable URL, expanding a bare
-// ":port" to localhost.
 func displayURL(addr string) string {
 	if strings.HasPrefix(addr, ":") {
 		return "http://localhost" + addr

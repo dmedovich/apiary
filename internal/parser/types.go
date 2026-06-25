@@ -5,18 +5,15 @@ import (
 	"strings"
 )
 
-// TypeRef is a structured representation of a Go type, produced by lowering a
-// go/types Type (see resolve.go).
 type TypeRef struct {
-	Name    string   // base type name (e.g. "string", "UserDTO", "time.Time")
-	IsPtr   bool     // *T
-	IsSlice bool     // []T
-	IsMap   bool     // map[K]V
-	MapKey  string   // key type name for maps
-	Elem    *TypeRef // element type for slices and maps
+	Name    string
+	IsPtr   bool
+	IsSlice bool
+	IsMap   bool
+	MapKey  string
+	Elem    *TypeRef
 }
 
-// FieldInfo describes a single struct field relevant to API schema generation.
 type FieldInfo struct {
 	Name       string
 	Type       *TypeRef
@@ -25,23 +22,21 @@ type FieldInfo struct {
 	Example    string
 	Default    string
 	Required   bool
-	Validate   string // raw `validate:"..."` tag, mapped to JSON-Schema constraints
-	PathParam  string // non-empty when field has path:"name" tag
-	QueryParam string // non-empty when field has query:"name" tag
-	Header     string // non-empty when field has header:"name" tag
+	Validate   string
+	PathParam  string
+	QueryParam string
+	Header     string
 }
 
-// TypeInfo describes a parsed struct type.
 type TypeInfo struct {
 	Name     string
 	Fields   []*FieldInfo
-	Embedded []string // component names of embedded (anonymous) structs, for allOf
+	Embedded []string
 }
 
-// EnumInfo describes a named Go type with a set of const values.
 type EnumInfo struct {
-	BaseType string // underlying Go type (e.g. "string", "int")
-	Values   []any  // const values in declaration order (string or int)
+	BaseType string
+	Values   []any
 }
 
 type fieldTags struct {
@@ -61,8 +56,6 @@ func parseStructTag(raw string) fieldTags {
 
 	jsonTag := st.Get("json")
 	if jsonTag != "" {
-		// Only the field-name portion before the first comma matters for the
-		// schema; option flags like ",omitempty" are not used.
 		tags.json, _, _ = strings.Cut(jsonTag, ",")
 	}
 
@@ -76,9 +69,6 @@ func parseStructTag(raw string) fieldTags {
 	return tags
 }
 
-// hasValidator reports whether the comma-separated go-playground/validator tag
-// contains the given validator by name (matching the part before any '=', so
-// "required" does not match "required_if=Foo").
 func hasValidator(tag, name string) bool {
 	for _, part := range strings.Split(tag, ",") {
 		part = strings.TrimSpace(part)
@@ -89,9 +79,6 @@ func hasValidator(tag, name string) bool {
 	return false
 }
 
-// goNameToJSON converts a Go field name to a JSON key using the same heuristic
-// as encoding/json: lowercase the first letter. Additionally, pure-uppercase
-// acronyms (ID, URL, UUID) are fully lowercased so "ID" → "id", not "iD".
 func goNameToJSON(name string) string {
 	if name == "" {
 		return name
