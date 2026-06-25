@@ -81,7 +81,7 @@ jobs:
           args: --timeout=5m
 
   generate:
-    name: spec generation smoke test
+    name: spec generation, freshness & validity
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -94,6 +94,16 @@ jobs:
 
       - name: Generate sample specs
         run: make generate
+
+      - name: Fail if committed docs are stale
+        run: git diff --exit-code docs/ || (echo "::error::docs/ are out of date — run 'make generate' and commit" && exit 1)
+
+      - name: Validate generated specs against OpenAPI 3.1
+        run: |
+          for spec in docs/*.yaml; do
+            echo "linting $spec"
+            npx --yes @redocly/cli@latest lint "$spec"
+          done
 
       - name: Upload generated specs
         uses: actions/upload-artifact@v4
