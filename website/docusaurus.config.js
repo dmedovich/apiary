@@ -1,5 +1,10 @@
 // @ts-check
+const fs = require('fs');
+const path = require('path');
 const { themes } = require('prism-react-renderer');
+
+// The live API Explorer renders this bundled example spec (dogfooding apiary).
+const apiSpec = fs.readFileSync(path.join(__dirname, '../docs/tasks.yaml'), 'utf8');
 
 /** @type {import('@docusaurus/types').Config} */
 const config = {
@@ -30,18 +35,19 @@ const config = {
         theme: { customCss: require.resolve('./src/css/custom.css') },
       }),
     ],
+  ],
+
+  plugins: [
     [
-      'redocusaurus',
+      '@scalar/docusaurus',
       {
-        // Renders the bundled example spec as a live API reference page.
-        specs: [
-          {
-            id: 'tasks',
-            spec: '../docs/tasks.yaml',
-            route: '/api/',
-          },
-        ],
-        theme: { primaryColor: '#00ADD8' },
+        label: 'API',
+        route: '/api',
+        showNavLink: false,
+        configuration: {
+          content: apiSpec,
+          hideDownloadButton: false,
+        },
       },
     ],
   ],
@@ -53,7 +59,7 @@ const config = {
         title: 'apiary',
         items: [
           { type: 'docSidebar', sidebarId: 'docs', position: 'left', label: 'Docs' },
-          { to: '/api/', label: 'API Explorer', position: 'left' },
+          { to: '/api', label: 'API Explorer', position: 'left' },
           { href: 'https://github.com/yaop-labs/apiary', label: 'GitHub', position: 'right' },
         ],
       },
