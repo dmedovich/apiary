@@ -173,7 +173,11 @@ func (p *Parser) fieldInfo(field *types.Var, rawTag string) *FieldInfo {
 	tags := parseStructTag(rawTag)
 	jsonName := tags.json
 	if jsonName == "" {
-		jsonName = goNameToJSON(field.Name())
+		if tags.form != "" {
+			jsonName = tags.form
+		} else {
+			jsonName = goNameToJSON(field.Name())
+		}
 	}
 	if jsonName == "-" {
 		return nil

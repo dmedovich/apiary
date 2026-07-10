@@ -220,7 +220,12 @@ func (b *Builder) buildOperation(
 					addParam(f.JSONName, "query", f.Required, f)
 				}
 			} else if needsRequestBody(typeInfo, len(bodyFields)) {
-				op.RequestBody = jsonBody(sb.BuildSchema(reqRef))
+				ct := ann.ContentType
+				if ct != "" && ct != "application/json" {
+					op.RequestBody = &RequestBody{Required: true, Content: map[string]*MediaType{ct: {Schema: sb.BuildSchema(reqRef)}}}
+				} else {
+					op.RequestBody = jsonBody(sb.BuildSchema(reqRef))
+				}
 			}
 		}
 	}

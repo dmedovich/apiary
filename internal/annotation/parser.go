@@ -21,8 +21,9 @@ type Operation struct {
 
 	Security []string
 
-	Request  string
-	Response string
+	Request     string
+	Response    string
+	ContentType string
 
 	Warnings []string
 }
@@ -107,11 +108,20 @@ func Parse(lines []string) (*Operation, bool) {
 			op.Request = value
 		case "response":
 			op.Response = value
+		case "content-type":
+			switch strings.ToLower(value) {
+			case "multipart", "multipart/form-data":
+				op.ContentType = "multipart/form-data"
+			case "form", "urlencoded", "application/x-www-form-urlencoded":
+				op.ContentType = "application/x-www-form-urlencoded"
+			default:
+				op.ContentType = value
+			}
 		default:
 
 			if looksLikeKey(key) {
 				op.Warnings = append(op.Warnings,
-					"unknown annotation key \""+key+"\"; ignored (did you mean one of summary, description, tags, errors, security, request, response?)")
+					"unknown annotation key \""+key+"\"; ignored (did you mean one of summary, description, tags, errors, security, request, response, content-type?)")
 			}
 		}
 	}

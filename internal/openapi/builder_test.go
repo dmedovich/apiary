@@ -346,6 +346,113 @@ func TestBuild_UnsupportedMethodWarnsAndSkips(t *testing.T) {
 	}
 }
 
+func TestBuild_MultipartFormDataRequestBody(t *testing.T) {
+	ops := []*parser.OperationInfo{
+		{
+			Annotation: &annotation.Operation{
+				Method:      "POST",
+				Path:        "/upload",
+				Summary:     "Upload file",
+				ContentType: "multipart/form-data",
+			},
+			RequestType:  &parser.TypeRef{Name: "UploadRequest"},
+			ResponseType: &parser.TypeRef{Name: "UploadResponse"},
+		},
+	}
+
+	types := map[string]*parser.TypeInfo{
+		"UploadRequest": {
+			Name: "UploadRequest",
+			Fields: []*parser.FieldInfo{
+				{Name: "File", JSONName: "file", Type: &parser.TypeRef{Name: "multipart.FileHeader"}, Required: true, Doc: "File to upload"},
+				{Name: "Name", JSONName: "name", Type: &parser.TypeRef{Name: "string"}, Required: true},
+			},
+		},
+		"UploadResponse": {Name: "UploadResponse"},
+	}
+
+	spec, err := openapi.NewBuilder("Test API", "1.0.0").Build(ops, types)
+	if err != nil {
+		t.Fatalf("Build error: %v", err)
+	}
+
+	item := spec.Paths["/upload"]
+	if item.Post == nil {
+		t.Fatal("POST operation missing")
+	}
+	rb := item.Post.RequestBody
+	if rb == nil {
+		t.Fatal("expected request body")
+	}
+	if _, ok := rb.Content["multipart/form-data"]; !ok {
+		t.Errorf("expected multipart/form-data content type, got keys: %v", func() []string {
+			keys := make([]string, 0, len(rb.Content))
+			for k := range rb.Content {
+				keys = append(keys, k)
+			}
+			return keys
+		}())
+	}
+	if _, ok := rb.Content["application/json"]; ok {
+		t.Error("should not have application/json for multipart operation")
+	}
+
+	fileSchema := rb.Content["multipart/form-data"].Schema
+	if fileSchema == nil || fileSchema.Ref == "" {
+		t.Fatal("expected a $ref schema for the request body")
+	}
+
+	uploadSchema, ok := spec.Components.Schemas["UploadRequest"]
+	if !ok {
+		t.Fatal("UploadRequest not in components")
+	}
+	fileProp, ok := uploadSchema.Properties["file"]
+	if !ok {
+		t.Fatal("file property missing from UploadRequest schema")
+	}
+	if fileProp.Type != "string" || fileProp.Format != "binary" {
+		t.Errorf("file field: want {type:string format:binary}, got {type:%s format:%s}", fileProp.Type, fileProp.Format)
+	}
+}
+
+func TestBuild_FormURLEncodedRequestBody(t *testing.T) {
+	ops := []*parser.OperationInfo{
+		{
+			Annotation: &annotation.Operation{
+				Method:      "POST",
+				Path:        "/login",
+				ContentType: "application/x-www-form-urlencoded",
+			},
+			RequestType:  &parser.TypeRef{Name: "LoginRequest"},
+			ResponseType: &parser.TypeRef{Name: "LoginResponse"},
+		},
+	}
+
+	types := map[string]*parser.TypeInfo{
+		"LoginRequest": {
+			Name: "LoginRequest",
+			Fields: []*parser.FieldInfo{
+				{Name: "Username", JSONName: "username", Type: &parser.TypeRef{Name: "string"}, Required: true},
+				{Name: "Password", JSONName: "password", Type: &parser.TypeRef{Name: "string"}, Required: true},
+			},
+		},
+		"LoginResponse": {Name: "LoginResponse"},
+	}
+
+	spec, err := openapi.NewBuilder("Test API", "1.0.0").Build(ops, types)
+	if err != nil {
+		t.Fatalf("Build error: %v", err)
+	}
+
+	rb := spec.Paths["/login"].Post.RequestBody
+	if rb == nil {
+		t.Fatal("expected request body")
+	}
+	if _, ok := rb.Content["application/x-www-form-urlencoded"]; !ok {
+		t.Error("expected application/x-www-form-urlencoded content type")
+	}
+}
+
 func TestBuild_DuplicateOperationWarns(t *testing.T) {
 	ops := []*parser.OperationInfo{
 		{Annotation: &annotation.Operation{Method: "GET", Path: "/dup", Summary: "first"}, ResponseType: &parser.TypeRef{Name: "R"}},

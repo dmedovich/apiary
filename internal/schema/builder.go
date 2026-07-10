@@ -424,6 +424,8 @@ func primitiveSchema(name string) *Schema {
 		return &Schema{Type: "string", Format: "uri"}
 	case "json.RawMessage":
 		return &Schema{}
+	case "multipart.FileHeader":
+		return &Schema{Type: "string", Format: "binary"}
 	case "sql.NullString":
 		return &Schema{Type: "string"}
 	case "sql.NullInt32":

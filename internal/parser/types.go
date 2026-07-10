@@ -41,6 +41,7 @@ type EnumInfo struct {
 
 type fieldTags struct {
 	json     string
+	form     string
 	doc      string
 	example  string
 	defaultV string
@@ -59,6 +60,7 @@ func parseStructTag(raw string) fieldTags {
 		tags.json, _, _ = strings.Cut(jsonTag, ",")
 	}
 
+	tags.form = st.Get("form")
 	tags.doc = st.Get("doc")
 	tags.example = st.Get("example")
 	tags.defaultV = st.Get("default")

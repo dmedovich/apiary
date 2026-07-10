@@ -195,6 +195,61 @@ func TestParse_SecurityMultiple(t *testing.T) {
 	}
 }
 
+func TestParse_ContentTypeMultipart(t *testing.T) {
+	lines := []string{
+		"apiary:operation POST /upload",
+		"content-type: multipart/form-data",
+	}
+	op, ok := annotation.Parse(lines)
+	if !ok {
+		t.Fatal("expected parse to succeed")
+	}
+	if op.ContentType != "multipart/form-data" {
+		t.Errorf("expected multipart/form-data, got %q", op.ContentType)
+	}
+}
+
+func TestParse_ContentTypeMultipartShorthand(t *testing.T) {
+	lines := []string{
+		"apiary:operation POST /upload",
+		"content-type: multipart",
+	}
+	op, ok := annotation.Parse(lines)
+	if !ok {
+		t.Fatal("expected parse to succeed")
+	}
+	if op.ContentType != "multipart/form-data" {
+		t.Errorf("expected multipart/form-data, got %q", op.ContentType)
+	}
+}
+
+func TestParse_ContentTypeFormURLEncoded(t *testing.T) {
+	lines := []string{
+		"apiary:operation POST /submit",
+		"content-type: form",
+	}
+	op, ok := annotation.Parse(lines)
+	if !ok {
+		t.Fatal("expected parse to succeed")
+	}
+	if op.ContentType != "application/x-www-form-urlencoded" {
+		t.Errorf("expected application/x-www-form-urlencoded, got %q", op.ContentType)
+	}
+}
+
+func TestParse_ContentTypeAbsentIsEmpty(t *testing.T) {
+	lines := []string{
+		"apiary:operation POST /api/v1/users",
+	}
+	op, ok := annotation.Parse(lines)
+	if !ok {
+		t.Fatal("expected parse to succeed")
+	}
+	if op.ContentType != "" {
+		t.Errorf("expected empty content-type, got %q", op.ContentType)
+	}
+}
+
 func TestParse_SecurityNilWhenAbsent(t *testing.T) {
 	lines := []string{
 		"apiary:operation GET /api/v1/items",

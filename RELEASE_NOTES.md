@@ -1,91 +1,71 @@
-# apiary v1.0.0
+# apiary v1.1.0
 
-**OpenAPI 3.1 for Go: driven by types, not comment soup.**
+## What's new
 
-The first stable release. apiary type-checks your Go code and turns function
-signatures and struct tags into a complete, valid OpenAPI 3.1 document, with no
-schema descriptions duplicated in comments.
+### Form-data request bodies
+
+Operations can now declare a `multipart/form-data` or
+`application/x-www-form-urlencoded` request body via the `content-type:`
+annotation:
 
 ```go
-// CreateUser registers a new account.
-// apiary:operation POST /api/v1/users
+// UploadAvatar uploads a user avatar.
+// apiary:operation POST /api/v1/users/{id}/avatar
+// content-type: multipart/form-data
 // tags: users
-// errors: 400,409,500
-func (h *UserHandler) CreateUser(ctx context.Context, req CreateUserRequest) (UserDTO, error) {
-    // business logic; apiary never touches this
+// errors: 400,413
+func (h *UserHandler) UploadAvatar(c *gin.Context) { ... }
+
+type UploadAvatarRequest struct {
+    ID     int64                  `path:"id"`
+    Avatar *multipart.FileHeader  `form:"avatar" doc:"Image file (JPEG or PNG)"`
+    Alt    string                 `form:"alt"    doc:"Alt text"`
 }
 ```
 
-The request/response types, the `operationId`, and the summary (from the godoc)
-are all inferred.
+Generated output:
+
+```yaml
+requestBody:
+  required: true
+  content:
+    multipart/form-data:
+      schema:
+        $ref: '#/components/schemas/UploadAvatarRequest'
+```
+
+The `avatar` field maps to `{type: string, format: binary}` automatically.
+
+**Shorthands** accepted by `content-type:`:
+
+| Write | Means |
+|---|---|
+| `multipart` | `multipart/form-data` |
+| `form` | `application/x-www-form-urlencoded` |
+| `urlencoded` | `application/x-www-form-urlencoded` |
+
+### `form` struct tag support
+
+Fields tagged with `form:"name"` now use that name in the generated schema
+when no `json` tag is present — consistent with how gin binds form fields.
+
+### `multipart.FileHeader` schema primitive
+
+`*multipart.FileHeader` fields map to `{type: string, format: binary}`.
 
 ---
-
-## Highlights
-
-- **Real type analysis.** Powered by `go/packages` + `go/types`: cross-package,
-  imported, and generic types resolve semantically. In-module structs expand
-  into real component schemas; well-known external types map to their formats.
-- **Rich schemas for free.** `validate:"..."` tags become JSON-Schema
-  constraints, pointers become nullable, enums are detected automatically, and
-  `example:`/`default:` values are typed to match the field.
-- **Built for clients & CI.** Stable, unique `operationId`s for code
-  generators; JSON or YAML output; a `-check` mode that fails when the committed
-  spec drifts.
-- **Honest output.** Diagnostics (with source positions) for unsupported
-  signatures, unknown annotation keys, unsupported methods, and duplicate
-  path+method / operationId.
-- **Live preview.** `apiary serve` serves Swagger UI that regenerates on refresh.
-
-## What's included
-
-**Authoring**
-- `// apiary:operation METHOD /path` markers with `summary`, `description`,
-  `tags`, `errors`, `security`, `request`, `response`, `operationId`.
-- Summary/description fall back to the handler's Go doc comment.
-- net/http and gin handlers (types via `request:`/`response:`).
-- Struct tags: `json`, `doc`, `example`, `default`, `validate`, `path`,
-  `query`, `header`.
-
-**Schema generation**
-- Validation constraints from validator rules (`min`/`max`/`len`/`gt`..`lte`/
-  `oneof`/`email`/`uuid`/`uri`/`ip`/`hostname`) for body fields **and**
-  path/query/header parameters.
-- Nullable pointers: scalars as `type: [T, "null"]`, struct pointers as
-  `anyOf: [{$ref}, {type: "null"}]`.
-- Automatic enum detection (string and integer bases).
-- Embedded structs via `allOf`.
-
-**CLI**
-- `-out`, `-title`, `-version`, `-description`, `-security`, `-server`,
-  `-format yaml|json`, `-check`, `-C dir`, `-V`.
-- Optional `apiary.yaml` config file (friendly to `//go:generate`).
-- `apiary serve` live Swagger UI.
 
 ## Install
 
 ```bash
-go install github.com/yaop-labs/apiary/cmd/apiary@v1.0.0
+go install github.com/yaop-labs/apiary/cmd/apiary@v1.1.0
 ```
 
 Pre-built binaries for linux/darwin/windows (amd64/arm64) are attached to this
 release.
 
-## Compatibility
-
-apiary type-checks the packages it scans, so the code must compile (its
-dependencies must be available), the same requirement as `go build`.
-
-From v1.0.0 the annotation format, struct tags, supported handler signatures,
-and CLI flags follow [Semantic Versioning](https://semver.org) and will not
-change in a breaking way within the v1 series. See
-[STABILITY.md](STABILITY.md).
-
-## Documentation
-
-Full docs and worked examples: **https://yaop-labs.github.io/apiary/**
-
 ## Links
 
 - Changelog: [CHANGELOG.md](CHANGELOG.md)
 - Stability policy: [STABILITY.md](STABILITY.md)
+- Documentation: **https://yaop-labs.github.io/apiary/**

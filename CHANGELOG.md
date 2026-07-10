@@ -4,6 +4,20 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-07-10
+
+### Added
+- **`content-type:` annotation.** Operations can now declare a non-JSON request
+  body with `content-type: multipart/form-data` or
+  `content-type: application/x-www-form-urlencoded` (shorthand: `multipart`,
+  `form`, `urlencoded`). The generated `requestBody` uses the specified media
+  type instead of `application/json`.
+- **`form` struct tag.** Fields tagged with `form:"name"` (e.g. for gin's
+  form binding) use that name in the generated schema when no `json` tag is
+  present.
+- **`multipart.FileHeader` primitive.** Fields of type `*multipart.FileHeader`
+  map to `{type: string, format: binary}` in the schema.
+
 ## [1.0.0] - 2026-06-25
 
 ### Added
