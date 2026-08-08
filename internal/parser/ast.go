@@ -55,7 +55,7 @@ func (p *Parser) Enums() map[string]*EnumInfo {
 	return p.enums
 }
 
-func (p *Parser) parseFunction(pkg *packages.Package, fn *ast.FuncDecl) *OperationInfo {
+func (p *Parser) parseFunction(pkg *packages.Package, file *ast.File, fn *ast.FuncDecl) *OperationInfo {
 	if fn.Doc == nil {
 		return nil
 	}
@@ -92,8 +92,8 @@ func (p *Parser) parseFunction(pkg *packages.Package, fn *ast.FuncDecl) *Operati
 	if isGinHandler(fn) || isStdlibHTTPHandler(fn) {
 		return &OperationInfo{
 			Annotation:   op,
-			RequestType:  p.resolveAnnotationType(pkg, op.Request),
-			ResponseType: p.resolveAnnotationType(pkg, op.Response),
+			RequestType:  p.resolveAnnotationType(pkg, file, fn.Pos(), op.Request),
+			ResponseType: p.resolveAnnotationType(pkg, file, fn.Pos(), op.Response),
 		}
 	}
 
@@ -131,10 +131,10 @@ func (p *Parser) parseFunction(pkg *packages.Package, fn *ast.FuncDecl) *Operati
 		}
 	}
 
-	if ann := p.resolveAnnotationType(pkg, op.Request); ann != nil {
+	if ann := p.resolveAnnotationType(pkg, file, fn.Pos(), op.Request); ann != nil {
 		reqRef = ann
 	}
-	if ann := p.resolveAnnotationType(pkg, op.Response); ann != nil {
+	if ann := p.resolveAnnotationType(pkg, file, fn.Pos(), op.Response); ann != nil {
 		respRef = ann
 	}
 

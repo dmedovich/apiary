@@ -3,6 +3,7 @@ package parser
 import (
 	"go/ast"
 	"go/constant"
+	"go/token"
 	"go/types"
 	"log"
 	"sort"
@@ -49,7 +50,7 @@ func (p *Parser) parsePackage(pkg *packages.Package) {
 			if !ok {
 				continue
 			}
-			if op := p.parseFunction(pkg, fn); op != nil {
+			if op := p.parseFunction(pkg, file, fn); op != nil {
 				p.operations = append(p.operations, op)
 			}
 		}
@@ -64,7 +65,12 @@ func (p *Parser) typeRefFromAST(pkg *packages.Package, expr ast.Expr) *TypeRef {
 	return p.typeRef(t)
 }
 
-func (p *Parser) resolveAnnotationType(pkg *packages.Package, s string) *TypeRef {
+// resolveAnnotationType resolves a type name written in a `request:`/`response:`
+// apiary annotation, e.g. "CreateUserRequest", "*CreateUserRequest",
+// "[]dto.ProductDTO", or "dto.ProductDTO". Qualified names are resolved
+// against the imports of the file the annotation was written in, so DTOs
+// don't need to live in the same package as the handler.
+func (p *Parser) resolveAnnotationType(pkg *packages.Package, file *ast.File, pos token.Pos, s string) *TypeRef {
 	ref := parseAnnotationTypeRef(s)
 	if ref == nil {
 		return nil
@@ -73,9 +79,9 @@ func (p *Parser) resolveAnnotationType(pkg *packages.Package, s string) *TypeRef
 	if ref.IsSlice && ref.Elem != nil {
 		leaf = ref.Elem
 	}
-	obj := pkg.Types.Scope().Lookup(leaf.Name)
-	tn, ok := obj.(*types.TypeName)
-	if !ok {
+	tn := p.lookupAnnotationTypeName(pkg, file, leaf.Name)
+	if tn == nil {
+		p.warnf(pos, "could not resolve annotation type %q; if it lives in another package, write it as pkg.Type and make sure this file imports that package", s)
 		return ref
 	}
 	resolved := p.typeRef(tn.Type())
@@ -84,6 +90,66 @@ func (p *Parser) resolveAnnotationType(pkg *packages.Package, s string) *TypeRef
 	}
 	resolved.IsPtr = ref.IsPtr
 	return resolved
+}
+
+// lookupAnnotationTypeName resolves a possibly-qualified type name ("Foo" or
+// "dto.Foo") from an annotation string. Unqualified names are looked up in
+// the handler's own package scope, same as before. Qualified names are
+// resolved via the *specific import* used in the handler's file (so renamed
+// imports like `d "internal/dto"` work), falling back to matching on the
+// imported package's declared name if the file's import list can't be
+// consulted for some reason.
+func (p *Parser) lookupAnnotationTypeName(pkg *packages.Package, file *ast.File, name string) *types.TypeName {
+	alias, typeName, qualified := strings.Cut(name, ".")
+	if !qualified {
+		obj := pkg.Types.Scope().Lookup(name)
+		tn, _ := obj.(*types.TypeName)
+		return tn
+	}
+
+	if file != nil {
+		if path, ok := fileImportPath(file, alias); ok {
+			if imp, ok := pkg.Imports[path]; ok && imp.Types != nil {
+				if tn, ok := imp.Types.Scope().Lookup(typeName).(*types.TypeName); ok {
+					return tn
+				}
+			}
+		}
+	}
+
+	// Fallback: match by the imported package's own declared name. This
+	// covers cases where we couldn't pin the import down via the file's
+	// import list, but won't work for renamed imports whose local alias
+	// differs from the package's declared name.
+	for _, imp := range pkg.Imports {
+		if imp.Types == nil || imp.Types.Name() != alias {
+			continue
+		}
+		if tn, ok := imp.Types.Scope().Lookup(typeName).(*types.TypeName); ok {
+			return tn
+		}
+	}
+	return nil
+}
+
+// fileImportPath returns the import path used in file for the given local
+// alias (either an explicit `import alias "path"`, or the package's default
+// name derived from the last path element).
+func fileImportPath(file *ast.File, alias string) (string, bool) {
+	for _, imp := range file.Imports {
+		path := strings.Trim(imp.Path.Value, `"`)
+		local := path[strings.LastIndex(path, "/")+1:]
+		if imp.Name != nil {
+			if imp.Name.Name == "_" || imp.Name.Name == "." {
+				continue
+			}
+			local = imp.Name.Name
+		}
+		if local == alias {
+			return path, true
+		}
+	}
+	return "", false
 }
 
 func (p *Parser) typeRef(t types.Type) *TypeRef {
