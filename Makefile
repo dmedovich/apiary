@@ -24,6 +24,7 @@ generate:
 	go run $(CMD) -out docs/sample.yaml  -title "Sample API"              -version "0.1.0" ./testdata/sample
 	go run $(CMD) -out docs/tasks.yaml   -title "Task Manager API"        -version "1.0.0" -security bearer ./testdata/router
 	go run $(CMD) -out docs/tasks_gin.yaml -title "Task Manager API (gin)" -version "1.0.0" -security bearer -C testdata/gin .
+	go run $(CMD) -out docs/gin_crosspkg.yaml -title "Cross-package DTO API (gin)" -version "1.0.0" ./testdata/gin_crosspkg/...
 
 lint:
 	golangci-lint run ./...
