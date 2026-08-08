@@ -498,6 +498,124 @@ type HealthResponse struct{ Status string ` + "`json:\"status\"`" + ` }
 	}
 }
 
+func TestLoad_GinHandler_CrossPackageType(t *testing.T) {
+	cases := map[string]string{
+		"renamed_import": `package sample
+
+import (
+	"testmod/gin"
+	d "testmod/dto"
+)
+
+// apiary:operation POST /api/v1/users
+// summary: Create user
+// request: d.CreateUserRequest
+// response: []d.UserDTO
+func CreateUser(c *gin.Context) {
+	var req d.CreateUserRequest
+	var resp []d.UserDTO
+	_, _ = req, resp
+}
+`,
+		"default_import": `package sample
+
+import (
+	"testmod/gin"
+	"testmod/dto"
+)
+
+// apiary:operation POST /api/v1/users
+// summary: Create user
+// request: dto.CreateUserRequest
+// response: []dto.UserDTO
+func CreateUser(c *gin.Context) {
+	var req dto.CreateUserRequest
+	var resp []dto.UserDTO
+	_, _ = req, resp
+}
+`,
+	}
+
+	for name, code := range cases {
+		t.Run(name, func(t *testing.T) {
+			p := loadFiles(t, map[string]string{
+				"gin/gin.go": "package gin\n\ntype Context struct{}\n",
+				"dto/dto.go": `package dto
+
+type CreateUserRequest struct {
+	Username string ` + "`" + `json:"username" validate:"required"` + "`" + `
+}
+
+type UserDTO struct {
+	ID       int64  ` + "`" + `json:"id"` + "`" + `
+	Username string ` + "`" + `json:"username"` + "`" + `
+}
+`,
+				"code.go": code,
+			})
+
+			ops := p.Operations()
+			if len(ops) != 1 {
+				t.Fatalf("expected 1 operation, got %d", len(ops))
+			}
+			op := ops[0]
+			if op.RequestType == nil || op.RequestType.Name != "CreateUserRequest" {
+				t.Fatalf("expected CreateUserRequest, got %v", op.RequestType)
+			}
+			if op.ResponseType == nil || !op.ResponseType.IsSlice {
+				t.Fatalf("expected slice response, got %v", op.ResponseType)
+			}
+			if op.ResponseType.Elem == nil || op.ResponseType.Elem.Name != "UserDTO" {
+				t.Errorf("expected UserDTO elem, got %v", op.ResponseType.Elem)
+			}
+
+			req, ok := p.Types()["CreateUserRequest"]
+			if !ok {
+				t.Fatal("cross-package CreateUserRequest not registered as a component")
+			}
+			if len(req.Fields) != 1 || !req.Fields[0].Required {
+				t.Errorf("unexpected fields on CreateUserRequest: %+v", req.Fields)
+			}
+
+			dtoType, ok := p.Types()["UserDTO"]
+			if !ok {
+				t.Fatal("cross-package UserDTO not registered as a component")
+			}
+			if len(dtoType.Fields) != 2 {
+				t.Errorf("expected 2 fields on UserDTO, got %d", len(dtoType.Fields))
+			}
+		})
+	}
+}
+
+func TestLoad_GinHandler_UnresolvedAnnotationTypeWarns(t *testing.T) {
+	var p *parser.Parser
+	out := captureLog(t, func() {
+		p = loadFiles(t, map[string]string{
+			"gin/gin.go": "package gin\n\ntype Context struct{}\n",
+			"code.go": `package sample
+
+import "testmod/gin"
+
+// apiary:operation GET /api/v1/users/{id}
+// summary: Get user
+// response: TotallyUnknownType
+func GetUser(c *gin.Context) {}
+`,
+		})
+	})
+	ops := p.Operations()
+	if len(ops) != 1 {
+		t.Fatalf("expected 1 operation, got %d", len(ops))
+	}
+	if ops[0].ResponseType == nil || ops[0].ResponseType.Name != "TotallyUnknownType" {
+		t.Errorf("expected raw fallback name, got %v", ops[0].ResponseType)
+	}
+	if !strings.Contains(out, "could not resolve annotation type") || !strings.Contains(out, "TotallyUnknownType") {
+		t.Errorf("expected unresolved-type warning, got: %q", out)
+	}
+}
+
 func TestLoad_CrossPackageType(t *testing.T) {
 	p := loadFiles(t, map[string]string{
 		"dto/dto.go": `package dto
