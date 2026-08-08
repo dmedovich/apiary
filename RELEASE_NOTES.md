@@ -1,64 +1,48 @@
-# apiary v1.1.0
+# apiary v1.2.0
 
 ## What's new
 
-### Form-data request bodies
+### Cross-package types in `request:`/`response:` annotations
 
-Operations can now declare a `multipart/form-data` or
-`application/x-www-form-urlencoded` request body via the `content-type:`
-annotation:
+Gin and net/http handlers can now reference request/response DTOs declared
+in a different package than the handler itself:
 
 ```go
-// UploadAvatar uploads a user avatar.
-// apiary:operation POST /api/v1/users/{id}/avatar
-// content-type: multipart/form-data
-// tags: users
-// errors: 400,413
-func (h *UserHandler) UploadAvatar(c *gin.Context) { ... }
+import (
+    "myapp/internal/dto"
+    "github.com/gin-gonic/gin"
+)
 
-type UploadAvatarRequest struct {
-    ID     int64                  `path:"id"`
-    Avatar *multipart.FileHeader  `form:"avatar" doc:"Image file (JPEG or PNG)"`
-    Alt    string                 `form:"alt"    doc:"Alt text"`
-}
+// apiary:operation POST /api/v1/users
+// summary: Create user
+// request: dto.CreateUserRequest
+// response: dto.UserResponse
+func (h *UserHandler) CreateUser(c *gin.Context) { ... }
 ```
 
-Generated output:
+No more keeping a duplicate types file next to your handlers just so apiary
+can see the type. Renamed imports (`d "myapp/internal/dto"`) work too.
 
-```yaml
-requestBody:
-  required: true
-  content:
-    multipart/form-data:
-      schema:
-        $ref: '#/components/schemas/UploadAvatarRequest'
-```
+### Fixes
 
-The `avatar` field maps to `{type: string, format: binary}` automatically.
+Previously, a qualified `request:`/`response:` reference like `dto.User`
+silently fell back to `{type: string}` (it matched the same fallback rule
+used for external types like `time.Time`), and an unqualified reference to
+a type in another package resolved to nothing — both without any warning.
+Both cases now resolve correctly, and a genuinely unresolvable type now logs
+a warning naming the type and its location instead of failing silently.
 
-**Shorthands** accepted by `content-type:`:
-
-| Write | Means |
-|---|---|
-| `multipart` | `multipart/form-data` |
-| `form` | `application/x-www-form-urlencoded` |
-| `urlencoded` | `application/x-www-form-urlencoded` |
-
-### `form` struct tag support
-
-Fields tagged with `form:"name"` now use that name in the generated schema
-when no `json` tag is present — consistent with how gin binds form fields.
-
-### `multipart.FileHeader` schema primitive
-
-`*multipart.FileHeader` fields map to `{type: string, format: binary}`.
+> **Note:** if your project was already (unintentionally) relying on a
+> cross-package `request:`/`response:` reference, your generated spec will
+> change — from a stray `string`/empty schema to the correct object schema.
+> Regenerate and diff before publishing.
 
 ---
 
 ## Install
 
 ```bash
-go install github.com/yaop-labs/apiary/cmd/apiary@v1.1.0
+go install github.com/yaop-labs/apiary/cmd/apiary@v1.2.0
 ```
 
 Pre-built binaries for linux/darwin/windows (amd64/arm64) are attached to this

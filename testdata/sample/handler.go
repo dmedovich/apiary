@@ -5,10 +5,12 @@ package sample
 
 import "context"
 
-type AuthHandler struct{}
-type UserHandler struct{}
-type ProductHandler struct{}
-type HealthHandler struct{}
+type (
+	AuthHandler    struct{}
+	UserHandler    struct{}
+	ProductHandler struct{}
+	HealthHandler  struct{}
+)
 
 // apiary:operation POST /api/v1/auth/telegram
 // summary: Authenticate via Telegram

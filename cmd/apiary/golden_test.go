@@ -31,6 +31,12 @@ func TestGolden(t *testing.T) {
 			opt:      specOptions{title: "Task Manager API (gin)", version: "1.0.0", security: []string{"bearer"}, dir: "../../testdata/gin"},
 			golden:   "../../docs/tasks_gin.yaml",
 		},
+		{
+			name:     "gin_crosspkg",
+			patterns: []string{"../../testdata/gin_crosspkg/..."},
+			opt:      specOptions{title: "Cross-package DTO API (gin)", version: "1.0.0"},
+			golden:   "../../docs/gin_crosspkg.yaml",
+		},
 	}
 
 	for _, c := range cases {
