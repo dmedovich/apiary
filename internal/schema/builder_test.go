@@ -377,8 +377,10 @@ func TestBuildStructPointerNullable(t *testing.T) {
 		"Order": {
 			Name: "Order",
 			Fields: []*parser.FieldInfo{
-				{Name: "Ship", JSONName: "ship", Doc: "Optional address",
-					Type: &parser.TypeRef{Name: "Address", IsPtr: true}},
+				{
+					Name: "Ship", JSONName: "ship", Doc: "Optional address",
+					Type: &parser.TypeRef{Name: "Address", IsPtr: true},
+				},
 			},
 		},
 		"Address": {Name: "Address", Fields: []*parser.FieldInfo{
@@ -407,6 +409,152 @@ func TestBuildStructPointerNullable(t *testing.T) {
 
 	if _, ok := b.Components()["Address"]; !ok {
 		t.Error("Address component not registered")
+	}
+}
+
+func TestBuildSlicePointerElementNullable(t *testing.T) {
+	// []*string -- the pointer lives on ref.Elem, not on the field's own
+	// TypeRef, so this exercises wrapPointer running through the slice
+	// item recursion in BuildSchema rather than the top-level field path.
+	ref := &parser.TypeRef{
+		Name:    "array",
+		IsSlice: true,
+		Elem:    &parser.TypeRef{Name: "string", IsPtr: true},
+	}
+	b := schema.NewBuilder(nil, nil)
+	s := b.BuildSchema(ref)
+	if s.Type != "array" {
+		t.Fatalf("expected array, got %s", s.Type)
+	}
+	if s.Items == nil || !s.Items.Nullable || s.Items.Type != "string" {
+		t.Errorf("expected nullable string items, got %+v", s.Items)
+	}
+}
+
+func TestBuildSlicePointerStructElementNullable(t *testing.T) {
+	// []*Address -- pointer-to-struct as a slice element; each item should
+	// get the same anyOf:[{$ref},{type:null}] wrap a bare *Address field
+	// gets, not a bare $ref.
+	types := map[string]*parser.TypeInfo{
+		"Address": {Name: "Address", Fields: []*parser.FieldInfo{
+			{Name: "City", JSONName: "city", Type: &parser.TypeRef{Name: "string"}},
+		}},
+	}
+	ref := &parser.TypeRef{
+		Name:    "array",
+		IsSlice: true,
+		Elem:    &parser.TypeRef{Name: "Address", IsPtr: true},
+	}
+	b := schema.NewBuilder(types, nil)
+	s := b.BuildSchema(ref)
+	if s.Items == nil || len(s.Items.AnyOf) != 2 {
+		t.Fatalf("expected items with anyOf of 2, got %+v", s.Items)
+	}
+	if s.Items.AnyOf[0].Ref != "#/components/schemas/Address" {
+		t.Errorf("first anyOf should $ref Address, got %q", s.Items.AnyOf[0].Ref)
+	}
+	if s.Items.AnyOf[1].Type != "null" {
+		t.Errorf("second anyOf should be type null, got %q", s.Items.AnyOf[1].Type)
+	}
+}
+
+func TestBuildMapPointerValueNullable(t *testing.T) {
+	// map[string]*int -- the pointer lives on ref.Elem (the map's value
+	// type), same gap as the slice case but for AdditionalProperties.
+	ref := &parser.TypeRef{
+		Name:   "map",
+		IsMap:  true,
+		MapKey: "string",
+		Elem:   &parser.TypeRef{Name: "int", IsPtr: true},
+	}
+	b := schema.NewBuilder(nil, nil)
+	s := b.BuildSchema(ref)
+	if s.AdditionalProperties == nil || !s.AdditionalProperties.Nullable {
+		t.Fatalf("expected nullable additionalProperties, got %+v", s.AdditionalProperties)
+	}
+	if s.AdditionalProperties.Type != "integer" {
+		t.Errorf("expected integer, got %q", s.AdditionalProperties.Type)
+	}
+}
+
+func TestBuildPointerToSliceNullable(t *testing.T) {
+	// *[]string -- the pointer is on the slice itself (ref.IsPtr), not on
+	// its element. Composite (non-scalar, non-$ref) pointer types should
+	// still be wrapped, not silently dropped.
+	ref := &parser.TypeRef{
+		Name:    "array",
+		IsSlice: true,
+		IsPtr:   true,
+		Elem:    &parser.TypeRef{Name: "string"},
+	}
+	b := schema.NewBuilder(nil, nil)
+	s := b.BuildSchema(ref)
+	if len(s.AnyOf) != 2 {
+		t.Fatalf("expected anyOf with 2 entries, got %+v", s)
+	}
+	if s.AnyOf[0].Type != "array" || s.AnyOf[0].Items == nil || s.AnyOf[0].Items.Type != "string" {
+		t.Errorf("first anyOf should preserve the array/items shape, got %+v", s.AnyOf[0])
+	}
+	if s.AnyOf[1].Type != "null" {
+		t.Errorf("second anyOf should be type null, got %q", s.AnyOf[1].Type)
+	}
+}
+
+func TestBuildSliceEnumElementPropagatesValues(t *testing.T) {
+	// []Status -- the enum lookup used to be keyed off the field's own
+	// TypeRef.Name ("array"), so a slice of enum values never got its
+	// items.enum populated. This exercises the fix through BuildSchema's
+	// slice-item recursion.
+	types := map[string]*parser.TypeInfo{
+		"Item": {
+			Name: "Item",
+			Fields: []*parser.FieldInfo{
+				{Name: "Tags", JSONName: "tags", Type: &parser.TypeRef{
+					Name: "array", IsSlice: true, Elem: &parser.TypeRef{Name: "Status"},
+				}},
+			},
+		},
+	}
+	enums := map[string]*parser.EnumInfo{
+		"Status": {BaseType: "string", Values: []any{"active", "archived"}},
+	}
+	b := schema.NewBuilder(types, enums)
+	b.BuildSchema(&parser.TypeRef{Name: "Item"})
+
+	tags := b.Components()["Item"].Properties["tags"]
+	if tags == nil || tags.Items == nil {
+		t.Fatal("missing 'tags' items schema")
+	}
+	if len(tags.Items.Enum) != 2 || tags.Items.Enum[0] != "active" || tags.Items.Enum[1] != "archived" {
+		t.Errorf("expected propagated enum values on items, got %v", tags.Items.Enum)
+	}
+}
+
+func TestBuildMapEnumValuePropagatesValues(t *testing.T) {
+	// map[string]Status -- same gap as the slice case, for
+	// additionalProperties.enum.
+	types := map[string]*parser.TypeInfo{
+		"Item": {
+			Name: "Item",
+			Fields: []*parser.FieldInfo{
+				{Name: "ByRegion", JSONName: "by_region", Type: &parser.TypeRef{
+					Name: "map", IsMap: true, MapKey: "string", Elem: &parser.TypeRef{Name: "Status"},
+				}},
+			},
+		},
+	}
+	enums := map[string]*parser.EnumInfo{
+		"Status": {BaseType: "string", Values: []any{"active", "archived"}},
+	}
+	b := schema.NewBuilder(types, enums)
+	b.BuildSchema(&parser.TypeRef{Name: "Item"})
+
+	byRegion := b.Components()["Item"].Properties["by_region"]
+	if byRegion == nil || byRegion.AdditionalProperties == nil {
+		t.Fatal("missing 'by_region' additionalProperties schema")
+	}
+	if len(byRegion.AdditionalProperties.Enum) != 2 {
+		t.Errorf("expected propagated enum values on additionalProperties, got %v", byRegion.AdditionalProperties.Enum)
 	}
 }
 

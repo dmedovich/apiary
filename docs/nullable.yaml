@@ -1,0 +1,76 @@
+openapi: 3.1.0
+info:
+    title: Nullable Fields API
+    version: 1.0.0
+paths:
+    /api/v1/widgets/{id}:
+        get:
+            operationId: getWidget
+            summary: Get widget
+            tags:
+                - widgets
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Widget'
+components:
+    schemas:
+        Address:
+            type: object
+            properties:
+                city:
+                    type: string
+        ErrorResponse:
+            type: object
+            properties:
+                error:
+                    type: string
+                    description: Human-readable error message
+            required:
+                - error
+        Widget:
+            type: object
+            properties:
+                alt_addresses:
+                    type: array
+                    items:
+                        anyOf:
+                            - $ref: '#/components/schemas/Address'
+                            - type: "null"
+                metadata:
+                    type: object
+                    additionalProperties:
+                        type: [string, "null"]
+                nickname:
+                    type: [string, "null"]
+                    description: Optional display name
+                past_statuses:
+                    type: array
+                    items:
+                        type: string
+                        enum:
+                            - active
+                            - retired
+                ship_to:
+                    anyOf:
+                        - $ref: '#/components/schemas/Address'
+                        - type: "null"
+                status:
+                    type: string
+                    enum:
+                        - active
+                        - retired
+                status_by_year:
+                    type: object
+                    additionalProperties:
+                        type: string
+                        enum:
+                            - active
+                            - retired
+                tags:
+                    type: array
+                    items:
+                        type: [string, "null"]

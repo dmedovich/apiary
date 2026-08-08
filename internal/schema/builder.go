@@ -135,23 +135,53 @@ func (b *Builder) BuildSchema(ref *parser.TypeRef) *Schema {
 		return &Schema{Type: "object"}
 	}
 	if ref.IsSlice {
-		return &Schema{Type: "array", Items: b.BuildSchema(ref.Elem)}
+		return b.wrapPointer(&Schema{Type: "array", Items: b.BuildSchema(ref.Elem)}, ref)
 	}
 	if ref.IsMap {
-		return &Schema{Type: "object", AdditionalProperties: b.BuildSchema(ref.Elem)}
+		return b.wrapPointer(&Schema{Type: "object", AdditionalProperties: b.BuildSchema(ref.Elem)}, ref)
 	}
 	if s := primitiveSchema(ref.Name); s != nil {
-		return s
+		return b.wrapPointer(s, ref)
 	}
 
 	if enumInfo, ok := b.enums[ref.Name]; ok {
 		if s := primitiveSchema(enumInfo.BaseType); s != nil {
-			return s
+			s.Enum = enumInfo.Values
+			return b.wrapPointer(s, ref)
 		}
 	}
 
 	b.ensureComponent(ref.Name)
-	return &Schema{Ref: "#/components/schemas/" + ref.Name}
+	return b.wrapPointer(&Schema{Ref: "#/components/schemas/" + ref.Name}, ref)
+}
+
+// wrapPointer applies the nullable transform for a TypeRef marked as a Go
+// pointer (ref.IsPtr). It runs inside BuildSchema itself, so it fires on
+// every TypeRef BuildSchema resolves -- not just a field's own top-level
+// type, but also the recursive calls used for slice items and map values
+// (ref.Elem). That's what makes []*T and map[K]*V nullable at the
+// item/value level, not just a bare *T field.
+//
+// Scalars (including enum-backed types, which resolve to a scalar type)
+// use the type-array form (type: [T, "null"]). Anything resolved via $ref
+// can't mix `type`/`enum` with `$ref` per JSON Schema, so it's wrapped in
+// anyOf: [{$ref}, {type: "null"}] instead. Composite inline schemas
+// (array/object built directly rather than by $ref -- e.g. a pointer to a
+// slice or map itself) get the same anyOf treatment, wrapping the whole
+// inline schema so its shape (items/additionalProperties) is preserved.
+func (b *Builder) wrapPointer(s *Schema, ref *parser.TypeRef) *Schema {
+	if !ref.IsPtr {
+		return s
+	}
+	switch {
+	case isScalarType(s.Type):
+		s.Nullable = true
+		return s
+	case s.Ref != "":
+		return &Schema{AnyOf: []*Schema{{Ref: s.Ref}, nullSchema()}}
+	default:
+		return &Schema{AnyOf: []*Schema{s, nullSchema()}}
+	}
 }
 
 func (b *Builder) BuildSchemaByName(name string) *Schema {
@@ -258,26 +288,8 @@ func (b *Builder) applyConstraints(s *Schema, field *parser.FieldInfo) {
 	if field.Default != "" {
 		s.Default = CoerceScalar(field.Default, s.Type)
 	}
-
-	if enumInfo := b.enums[field.Type.Name]; enumInfo != nil {
-		s.Enum = enumInfo.Values
-	}
 	if field.Validate != "" {
 		applyValidators(s, field.Validate)
-	}
-	if field.Type.IsPtr {
-		switch {
-		case isScalarType(s.Type):
-
-			s.Nullable = true
-		case s.Ref != "":
-
-			*s = Schema{
-				Description: s.Description,
-				Example:     s.Example,
-				AnyOf:       []*Schema{{Ref: s.Ref}, nullSchema()},
-			}
-		}
 	}
 }
 

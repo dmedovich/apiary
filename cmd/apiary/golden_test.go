@@ -37,6 +37,12 @@ func TestGolden(t *testing.T) {
 			opt:      specOptions{title: "Cross-package DTO API (gin)", version: "1.0.0"},
 			golden:   "../../docs/gin_crosspkg.yaml",
 		},
+		{
+			name:     "nullable",
+			patterns: []string{"../../testdata/nullable"},
+			opt:      specOptions{title: "Nullable Fields API", version: "1.0.0"},
+			golden:   "../../docs/nullable.yaml",
+		},
 	}
 
 	for _, c := range cases {
