@@ -11,6 +11,69 @@ import (
 	"github.com/yaop-labs/apiary/internal/parser"
 )
 
+func TestBuild_SuccessResponseMetadata(t *testing.T) {
+	for _, tc := range []struct {
+		name, status, description, mediaType, format string
+		annotation                                   annotation.Operation
+		responseType                                 *parser.TypeRef
+	}{
+		{"default JSON", "200", "OK", "application/json", "", annotation.Operation{}, &parser.TypeRef{Name: "string"}},
+		{"accepted JSON", "202", "Accepted", "application/json", "", annotation.Operation{ResponseStatus: 202}, &parser.TypeRef{Name: "string"}},
+		{"created custom JSON", "201", "Created", "application/vnd.example+json", "", annotation.Operation{ResponseStatus: 201, ResponseContentType: "application/vnd.example+json"}, &parser.TypeRef{Name: "string"}},
+		{"binary default", "200", "OK", "application/octet-stream", "binary", annotation.Operation{ResponseFormat: "binary"}, nil},
+		{"binary XLSX overrides inferred DTO", "200", "OK", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "binary", annotation.Operation{ResponseFormat: "binary", ResponseContentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}, &parser.TypeRef{Name: "UnusedDTO"}},
+		{"no content", "204", "No Content", "", "", annotation.Operation{ResponseStatus: 204}, nil},
+		{"reset content", "205", "Reset Content", "", "", annotation.Operation{ResponseStatus: 205}, nil},
+		{"extension success", "299", "Success", "", "", annotation.Operation{ResponseStatus: 299}, nil},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ann := tc.annotation
+			ann.Method, ann.Path = "POST", "/exports"
+			ann.Errors = []annotation.ErrorSpec{{Code: 404}}
+			spec, err := openapi.NewBuilder("Test", "1").Build([]*parser.OperationInfo{{Annotation: &ann, ResponseType: tc.responseType}}, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			responses := spec.Paths["/exports"].Post.Responses
+			if len(responses) != 2 {
+				t.Fatalf("unexpected responses: %+v", responses)
+			}
+			response := responses[tc.status]
+			if response == nil || response.Description != tc.description {
+				t.Fatalf("unexpected success response: %+v", response)
+			}
+			if tc.mediaType == "" {
+				if len(response.Content) != 0 {
+					t.Fatal("bodyless response has content")
+				}
+			} else {
+				media := response.Content[tc.mediaType]
+				if len(response.Content) != 1 || media == nil || media.Schema.Type != "string" || media.Schema.Format != tc.format {
+					t.Fatalf("unexpected response content: %+v", response.Content)
+				}
+			}
+			if responses["404"].Content["application/json"] == nil {
+				t.Fatal("error must remain JSON")
+			}
+			if _, exists := spec.Components.Schemas["UnusedDTO"]; exists {
+				t.Fatal("binary response must not build an inferred DTO")
+			}
+		})
+	}
+}
+
+func TestBuild_RejectsBodyForBodylessStatus(t *testing.T) {
+	for _, status := range []int{204, 205} {
+		for _, format := range []string{"", "binary"} {
+			ann := &annotation.Operation{Method: "GET", Path: "/exports", ResponseStatus: status, ResponseFormat: format}
+			_, err := openapi.NewBuilder("Test", "1").Build([]*parser.OperationInfo{{Annotation: ann, ResponseType: &parser.TypeRef{Name: "string"}}}, nil)
+			if err == nil || !strings.Contains(err.Error(), "does not allow a response body") {
+				t.Fatalf("expected bodyless status error, got %v", err)
+			}
+		}
+	}
+}
+
 func captureLog(t *testing.T, fn func()) string {
 	t.Helper()
 	var buf bytes.Buffer

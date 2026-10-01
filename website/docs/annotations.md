@@ -52,6 +52,39 @@ func Handler(c *gin.Context)                                           // gin
 func Handler(w http.ResponseWriter, r *http.Request)                   // net/http
 ```
 
+## Success responses
+
+Success responses default to `200 OK` and `application/json`. `response:`
+overrides the inferred Go response type (and supplies it for gin/net/http
+handlers). Set `response-status:` to any code from 200 through 299 and
+`response-content-type:` to the response's media type. These annotations do
+not change the request's `content-type:` or JSON error responses.
+
+```go
+// apiary:operation POST /exports
+// response: ExportJobStartedResponse
+// response-status: 202
+func StartExport(w http.ResponseWriter, r *http.Request) { /* ... */ }
+```
+
+For a file download, use `response-format: binary`. This explicitly replaces
+the inferred response schema with `type: string, format: binary`; no Go DTO
+or `response:` annotation is needed. The default binary media type is
+`application/octet-stream`, or you can specify the file's MIME type:
+
+```go
+// apiary:operation GET /exports/{id}/download
+// response-format: binary
+// response-content-type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+// errors: 404,500
+func DownloadExport(w http.ResponseWriter, r *http.Request) { /* ... */ }
+```
+
+Invalid status codes, media types, or formats produce warnings and are
+ignored. Currently `binary` is the only supported `response-format`.
+Statuses 204 and 205 must have no response body; generation fails if a
+response type or binary format is specified for them.
+
 ## Error responses
 
 `errors: 400,401,500` adds a response entry for each code, all sharing the

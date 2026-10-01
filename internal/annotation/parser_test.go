@@ -7,6 +7,39 @@ import (
 	"github.com/yaop-labs/apiary/internal/annotation"
 )
 
+func TestParse_ResponseMetadata(t *testing.T) {
+	op, ok := annotation.Parse([]string{
+		"apiary:operation POST /exports", "response: Job",
+		"response-status: 202", "response-content-type: application/vnd.example+json",
+		"content-type: multipart", "response-format: binary",
+	})
+	if !ok || len(op.Warnings) != 0 {
+		t.Fatalf("expected valid annotations: %+v", op)
+	}
+	if op.ResponseStatus != 202 || op.Response != "Job" || op.ResponseFormat != "binary" ||
+		op.ResponseContentType != "application/vnd.example+json" || op.ContentType != "multipart/form-data" {
+		t.Fatalf("unexpected response metadata: %+v", op)
+	}
+}
+
+func TestParse_InvalidResponseMetadata(t *testing.T) {
+	for _, line := range []string{
+		"response-status: 199", "response-status: 300", "response-status: nope",
+		"response-content-type: not-a-media-type", "response-content-type: application/*",
+		"response-content-type: application/json; charset", "response-format: base64",
+	} {
+		t.Run(line, func(t *testing.T) {
+			op, ok := annotation.Parse([]string{"apiary:operation GET /exports", line})
+			if !ok || len(op.Warnings) != 1 {
+				t.Fatalf("expected one warning: %+v", op)
+			}
+			if op.ResponseStatus != 0 || op.ResponseContentType != "" || op.ResponseFormat != "" {
+				t.Fatalf("invalid metadata must be ignored: %+v", op)
+			}
+		})
+	}
+}
+
 func TestParse_Full(t *testing.T) {
 	lines := []string{
 		"apiary:operation POST /api/v1/auth/telegram",

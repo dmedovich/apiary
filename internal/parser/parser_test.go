@@ -8,8 +8,45 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/yaop-labs/apiary/internal/openapi"
 	"github.com/yaop-labs/apiary/internal/parser"
 )
+
+func TestSuccessResponses_FromHTTPHandlers(t *testing.T) {
+	p := loadSrc(t, `package sample
+import "net/http"
+type Job struct { ID string `+"`json:\"id\"`"+` }
+// apiary:operation POST /exports
+// response: Job
+// response-status: 202
+// errors: 400
+func Start(w http.ResponseWriter, r *http.Request) {}
+// apiary:operation GET /exports/download
+// response-format: binary
+// response-content-type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+// errors: 404
+func Download(w http.ResponseWriter, r *http.Request) {}
+`)
+	if len(p.Operations()) != 2 {
+		t.Fatalf("expected two handlers, got %d", len(p.Operations()))
+	}
+	spec, err := openapi.NewBuilder("Export API", "1").Build(p.Operations(), p.Types())
+	if err != nil {
+		t.Fatal(err)
+	}
+	started := spec.Paths["/exports"].Post.Responses
+	if started["200"] != nil || started["202"] == nil || started["202"].Description != "Accepted" {
+		t.Fatalf("expected 202 Accepted, got %+v", started)
+	}
+	if started["202"].Content["application/json"].Schema.Ref != "#/components/schemas/Job" {
+		t.Fatal("202 response must reference the annotated DTO")
+	}
+	download := spec.Paths["/exports/download"].Get.Responses["200"]
+	media := download.Content["application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"]
+	if media == nil || media.Schema.Type != "string" || media.Schema.Format != "binary" {
+		t.Fatalf("expected XLSX binary response, got %+v", download)
+	}
+}
 
 func loadSrc(t *testing.T, src string) *parser.Parser {
 	t.Helper()

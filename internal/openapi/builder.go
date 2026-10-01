@@ -1,7 +1,9 @@
 package openapi
 
 import (
+	"fmt"
 	"log"
+	"net/http"
 	"strconv"
 	"strings"
 
@@ -230,14 +232,31 @@ func (b *Builder) buildOperation(
 		}
 	}
 
-	if opInfo.ResponseType != nil {
-		op.Responses["200"] = &Response{
-			Description: "OK",
-			Content:     jsonContent(sb.BuildSchema(opInfo.ResponseType)),
-		}
-	} else {
-		op.Responses["200"] = &Response{Description: "OK"}
+	status := ann.ResponseStatus
+	if status == 0 {
+		status = http.StatusOK
 	}
+	response := &Response{Description: httpStatusText(status)}
+	var responseSchema *schema.Schema
+	mediaType := ann.ResponseContentType
+	if ann.ResponseFormat == "binary" {
+		responseSchema = &schema.Schema{Type: "string", Format: "binary"}
+		if mediaType == "" {
+			mediaType = "application/octet-stream"
+		}
+	} else if opInfo.ResponseType != nil {
+		responseSchema = sb.BuildSchema(opInfo.ResponseType)
+	}
+	if responseSchema != nil {
+		if status == http.StatusNoContent || status == http.StatusResetContent {
+			return nil, fmt.Errorf("%s %s: response status %d does not allow a response body", method, ann.Path, status)
+		}
+		if mediaType == "" {
+			mediaType = "application/json"
+		}
+		response.Content = map[string]*MediaType{mediaType: {Schema: responseSchema}}
+	}
+	op.Responses[strconv.Itoa(status)] = response
 
 	for _, errSpec := range ann.Errors {
 		schemaRef := "#/components/schemas/ErrorResponse"
@@ -295,6 +314,12 @@ var httpStatusTexts = map[int]string{
 }
 
 func httpStatusText(code int) string {
+	if code >= 200 && code <= 299 {
+		if text := http.StatusText(code); text != "" {
+			return text
+		}
+		return "Success"
+	}
 	if t, ok := httpStatusTexts[code]; ok {
 		return t
 	}
