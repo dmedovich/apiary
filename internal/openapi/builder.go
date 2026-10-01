@@ -1,7 +1,9 @@
 package openapi
 
 import (
+	"fmt"
 	"log"
+	"net/http"
 	"strconv"
 	"strings"
 
@@ -230,28 +232,64 @@ func (b *Builder) buildOperation(
 		}
 	}
 
-	if opInfo.ResponseType != nil {
-		op.Responses["200"] = &Response{
-			Description: "OK",
-			Content:     jsonContent(sb.BuildSchema(opInfo.ResponseType)),
-		}
-	} else {
-		op.Responses["200"] = &Response{Description: "OK"}
+	status, response, err := successResponse(opInfo, sb)
+	if err != nil {
+		return nil, err
 	}
+	op.Responses[status] = response
 
 	for _, errSpec := range ann.Errors {
+		code := strconv.Itoa(errSpec.Code)
+		if code == status {
+			return nil, fmt.Errorf("%s %s: success status %s is also declared in errors", method, ann.Path, status)
+		}
 		schemaRef := "#/components/schemas/ErrorResponse"
 		if errSpec.Schema != "" {
 			sb.BuildSchemaByName(errSpec.Schema)
 			schemaRef = "#/components/schemas/" + errSpec.Schema
 		}
-		op.Responses[strconv.Itoa(errSpec.Code)] = &Response{
+		op.Responses[code] = &Response{
 			Description: httpStatusText(errSpec.Code),
 			Content:     jsonContent(&schema.Schema{Ref: schemaRef}),
 		}
 	}
 
 	return op, nil
+}
+
+func successResponse(opInfo *parser.OperationInfo, sb *schema.Builder) (string, *Response, error) {
+	ann := opInfo.Annotation
+	status := ann.ResponseStatus
+	if status == 0 {
+		status = http.StatusOK
+	}
+	if (status == http.StatusNoContent || status == http.StatusResetContent) &&
+		(opInfo.ResponseType != nil || ann.ResponseFormat == "binary") {
+		return "", nil, fmt.Errorf("%s %s: response status %d does not allow a response body", strings.ToUpper(ann.Method), ann.Path, status)
+	}
+
+	description := http.StatusText(status)
+	if description == "" {
+		description = "Success"
+	}
+	response := &Response{Description: description}
+	mediaType := ann.ResponseContentType
+	var responseSchema *schema.Schema
+	if ann.ResponseFormat == "binary" {
+		responseSchema = &schema.Schema{Type: "string", Format: "binary"}
+		if mediaType == "" {
+			mediaType = "application/octet-stream"
+		}
+	} else if opInfo.ResponseType != nil {
+		responseSchema = sb.BuildSchema(opInfo.ResponseType)
+	}
+	if responseSchema != nil {
+		if mediaType == "" {
+			mediaType = "application/json"
+		}
+		response.Content = map[string]*MediaType{mediaType: {Schema: responseSchema}}
+	}
+	return strconv.Itoa(status), response, nil
 }
 
 func operationSecurity(security []string) any {

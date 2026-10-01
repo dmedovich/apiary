@@ -11,6 +11,122 @@ import (
 	"github.com/yaop-labs/apiary/internal/parser"
 )
 
+func TestBuild_SuccessResponseMetadata(t *testing.T) {
+	cases := []struct {
+		name         string
+		status       string
+		description  string
+		mediaType    string
+		format       string
+		annotation   annotation.Operation
+		responseType *parser.TypeRef
+	}{
+		{
+			name: "default JSON", status: "200", description: "OK", mediaType: "application/json",
+			responseType: &parser.TypeRef{Name: "string"},
+		},
+		{
+			name: "accepted JSON", status: "202", description: "Accepted", mediaType: "application/json",
+			annotation: annotation.Operation{ResponseStatus: 202}, responseType: &parser.TypeRef{Name: "string"},
+		},
+		{
+			name: "created custom JSON", status: "201", description: "Created", mediaType: "application/vnd.example+json",
+			annotation:   annotation.Operation{ResponseStatus: 201, ResponseContentType: "application/vnd.example+json"},
+			responseType: &parser.TypeRef{Name: "string"},
+		},
+		{
+			name: "binary default", status: "200", description: "OK", mediaType: "application/octet-stream", format: "binary",
+			annotation: annotation.Operation{ResponseFormat: "binary"},
+		},
+		{
+			name: "binary XLSX overrides inferred DTO", status: "200", description: "OK", format: "binary",
+			mediaType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+			annotation: annotation.Operation{
+				ResponseFormat: "binary", ResponseContentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+			},
+			responseType: &parser.TypeRef{Name: "UnusedDTO"},
+		},
+		{
+			name: "no content", status: "204", description: "No Content",
+			annotation: annotation.Operation{ResponseStatus: 204},
+		},
+		{
+			name: "reset content", status: "205", description: "Reset Content",
+			annotation: annotation.Operation{ResponseStatus: 205},
+		},
+		{
+			name: "extension success", status: "299", description: "Success",
+			annotation: annotation.Operation{ResponseStatus: 299},
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			ann := tc.annotation
+			ann.Method, ann.Path = "POST", "/exports"
+			ann.Errors = []annotation.ErrorSpec{{Code: 404}}
+			spec, err := openapi.NewBuilder("Test", "1").Build([]*parser.OperationInfo{{Annotation: &ann, ResponseType: tc.responseType}}, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			responses := spec.Paths["/exports"].Post.Responses
+			if len(responses) != 2 {
+				t.Fatalf("unexpected responses: %+v", responses)
+			}
+			response := responses[tc.status]
+			if response == nil || response.Description != tc.description {
+				t.Fatalf("unexpected success response: %+v", response)
+			}
+			if tc.mediaType == "" {
+				if len(response.Content) != 0 {
+					t.Fatal("bodyless response has content")
+				}
+			} else {
+				media := response.Content[tc.mediaType]
+				if len(response.Content) != 1 || media == nil || media.Schema == nil || media.Schema.Type != "string" || media.Schema.Format != tc.format {
+					t.Fatalf("unexpected response content: %+v", response.Content)
+				}
+			}
+			if responses["404"].Content["application/json"] == nil {
+				t.Fatal("error must remain JSON")
+			}
+			if _, exists := spec.Components.Schemas["UnusedDTO"]; exists {
+				t.Fatal("binary response must not build an inferred DTO")
+			}
+		})
+	}
+}
+
+func TestBuild_RejectsBodyForBodylessStatus(t *testing.T) {
+	for _, status := range []int{204, 205} {
+		for _, binary := range []bool{false, true} {
+			ann := &annotation.Operation{Method: "GET", Path: "/exports", ResponseStatus: status}
+			var responseType *parser.TypeRef
+			if binary {
+				ann.ResponseFormat = "binary"
+			} else {
+				responseType = &parser.TypeRef{Name: "string"}
+			}
+			_, err := openapi.NewBuilder("Test", "1").Build([]*parser.OperationInfo{{Annotation: ann, ResponseType: responseType}}, nil)
+			if err == nil || !strings.Contains(err.Error(), "does not allow a response body") {
+				t.Fatalf("expected bodyless status error, got %v", err)
+			}
+		}
+	}
+}
+
+func TestBuild_RejectsSuccessStatusInErrors(t *testing.T) {
+	for _, status := range []int{200, 202} {
+		ann := &annotation.Operation{
+			Method: "POST", Path: "/exports", ResponseStatus: status,
+			Errors: []annotation.ErrorSpec{{Code: status}},
+		}
+		_, err := openapi.NewBuilder("Test", "1").Build([]*parser.OperationInfo{{Annotation: ann}}, nil)
+		if err == nil || !strings.Contains(err.Error(), "is also declared in errors") {
+			t.Fatalf("expected a conflicting status error, got %v", err)
+		}
+	}
+}
+
 func captureLog(t *testing.T, fn func()) string {
 	t.Helper()
 	var buf bytes.Buffer

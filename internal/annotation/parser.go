@@ -1,6 +1,7 @@
 package annotation
 
 import (
+	"mime"
 	"strconv"
 	"strings"
 )
@@ -21,9 +22,12 @@ type Operation struct {
 
 	Security []string
 
-	Request     string
-	Response    string
-	ContentType string
+	Request             string
+	Response            string
+	ContentType         string
+	ResponseStatus      int
+	ResponseContentType string
+	ResponseFormat      string
 
 	Warnings []string
 }
@@ -33,7 +37,7 @@ func looksLikeKey(s string) bool {
 		return false
 	}
 	for _, r := range s {
-		if r < 'a' || r > 'z' {
+		if (r < 'a' || r > 'z') && r != '-' {
 			return false
 		}
 	}
@@ -108,6 +112,26 @@ func Parse(lines []string) (*Operation, bool) {
 			op.Request = value
 		case "response":
 			op.Response = value
+		case "response-status":
+			code, err := strconv.Atoi(value)
+			if err != nil || code < 200 || code > 299 {
+				op.Warnings = append(op.Warnings, "invalid response-status \""+value+"\"; expected a success status from 200 to 299; ignored")
+				continue
+			}
+			op.ResponseStatus = code
+		case "response-content-type":
+			mediaType, _, err := mime.ParseMediaType(value)
+			if err != nil || !strings.Contains(mediaType, "/") || strings.Contains(mediaType, "*") {
+				op.Warnings = append(op.Warnings, "invalid response-content-type \""+value+"\"; expected a media type such as application/octet-stream; ignored")
+				continue
+			}
+			op.ResponseContentType = value
+		case "response-format":
+			if value != "binary" {
+				op.Warnings = append(op.Warnings, "invalid response-format \""+value+"\"; supported: binary; ignored")
+				continue
+			}
+			op.ResponseFormat = value
 		case "content-type":
 			switch strings.ToLower(value) {
 			case "multipart", "multipart/form-data":
@@ -121,7 +145,7 @@ func Parse(lines []string) (*Operation, bool) {
 
 			if looksLikeKey(key) {
 				op.Warnings = append(op.Warnings,
-					"unknown annotation key \""+key+"\"; ignored (did you mean one of summary, description, tags, errors, security, request, response, content-type?)")
+					"unknown annotation key \""+key+"\"; ignored (did you mean one of summary, description, tags, errors, security, request, response, content-type, response-status, response-content-type, response-format?)")
 			}
 		}
 	}
