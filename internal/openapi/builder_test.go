@@ -12,20 +12,54 @@ import (
 )
 
 func TestBuild_SuccessResponseMetadata(t *testing.T) {
-	for _, tc := range []struct {
-		name, status, description, mediaType, format string
-		annotation                                   annotation.Operation
-		responseType                                 *parser.TypeRef
+	cases := []struct {
+		name         string
+		status       string
+		description  string
+		mediaType    string
+		format       string
+		annotation   annotation.Operation
+		responseType *parser.TypeRef
 	}{
-		{"default JSON", "200", "OK", "application/json", "", annotation.Operation{}, &parser.TypeRef{Name: "string"}},
-		{"accepted JSON", "202", "Accepted", "application/json", "", annotation.Operation{ResponseStatus: 202}, &parser.TypeRef{Name: "string"}},
-		{"created custom JSON", "201", "Created", "application/vnd.example+json", "", annotation.Operation{ResponseStatus: 201, ResponseContentType: "application/vnd.example+json"}, &parser.TypeRef{Name: "string"}},
-		{"binary default", "200", "OK", "application/octet-stream", "binary", annotation.Operation{ResponseFormat: "binary"}, nil},
-		{"binary XLSX overrides inferred DTO", "200", "OK", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "binary", annotation.Operation{ResponseFormat: "binary", ResponseContentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}, &parser.TypeRef{Name: "UnusedDTO"}},
-		{"no content", "204", "No Content", "", "", annotation.Operation{ResponseStatus: 204}, nil},
-		{"reset content", "205", "Reset Content", "", "", annotation.Operation{ResponseStatus: 205}, nil},
-		{"extension success", "299", "Success", "", "", annotation.Operation{ResponseStatus: 299}, nil},
-	} {
+		{
+			name: "default JSON", status: "200", description: "OK", mediaType: "application/json",
+			responseType: &parser.TypeRef{Name: "string"},
+		},
+		{
+			name: "accepted JSON", status: "202", description: "Accepted", mediaType: "application/json",
+			annotation: annotation.Operation{ResponseStatus: 202}, responseType: &parser.TypeRef{Name: "string"},
+		},
+		{
+			name: "created custom JSON", status: "201", description: "Created", mediaType: "application/vnd.example+json",
+			annotation:   annotation.Operation{ResponseStatus: 201, ResponseContentType: "application/vnd.example+json"},
+			responseType: &parser.TypeRef{Name: "string"},
+		},
+		{
+			name: "binary default", status: "200", description: "OK", mediaType: "application/octet-stream", format: "binary",
+			annotation: annotation.Operation{ResponseFormat: "binary"},
+		},
+		{
+			name: "binary XLSX overrides inferred DTO", status: "200", description: "OK", format: "binary",
+			mediaType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+			annotation: annotation.Operation{
+				ResponseFormat: "binary", ResponseContentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+			},
+			responseType: &parser.TypeRef{Name: "UnusedDTO"},
+		},
+		{
+			name: "no content", status: "204", description: "No Content",
+			annotation: annotation.Operation{ResponseStatus: 204},
+		},
+		{
+			name: "reset content", status: "205", description: "Reset Content",
+			annotation: annotation.Operation{ResponseStatus: 205},
+		},
+		{
+			name: "extension success", status: "299", description: "Success",
+			annotation: annotation.Operation{ResponseStatus: 299},
+		},
+	}
+	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			ann := tc.annotation
 			ann.Method, ann.Path = "POST", "/exports"
@@ -48,7 +82,7 @@ func TestBuild_SuccessResponseMetadata(t *testing.T) {
 				}
 			} else {
 				media := response.Content[tc.mediaType]
-				if len(response.Content) != 1 || media == nil || media.Schema.Type != "string" || media.Schema.Format != tc.format {
+				if len(response.Content) != 1 || media == nil || media.Schema == nil || media.Schema.Type != "string" || media.Schema.Format != tc.format {
 					t.Fatalf("unexpected response content: %+v", response.Content)
 				}
 			}
@@ -64,12 +98,31 @@ func TestBuild_SuccessResponseMetadata(t *testing.T) {
 
 func TestBuild_RejectsBodyForBodylessStatus(t *testing.T) {
 	for _, status := range []int{204, 205} {
-		for _, format := range []string{"", "binary"} {
-			ann := &annotation.Operation{Method: "GET", Path: "/exports", ResponseStatus: status, ResponseFormat: format}
-			_, err := openapi.NewBuilder("Test", "1").Build([]*parser.OperationInfo{{Annotation: ann, ResponseType: &parser.TypeRef{Name: "string"}}}, nil)
+		for _, binary := range []bool{false, true} {
+			ann := &annotation.Operation{Method: "GET", Path: "/exports", ResponseStatus: status}
+			var responseType *parser.TypeRef
+			if binary {
+				ann.ResponseFormat = "binary"
+			} else {
+				responseType = &parser.TypeRef{Name: "string"}
+			}
+			_, err := openapi.NewBuilder("Test", "1").Build([]*parser.OperationInfo{{Annotation: ann, ResponseType: responseType}}, nil)
 			if err == nil || !strings.Contains(err.Error(), "does not allow a response body") {
 				t.Fatalf("expected bodyless status error, got %v", err)
 			}
+		}
+	}
+}
+
+func TestBuild_RejectsSuccessStatusInErrors(t *testing.T) {
+	for _, status := range []int{200, 202} {
+		ann := &annotation.Operation{
+			Method: "POST", Path: "/exports", ResponseStatus: status,
+			Errors: []annotation.ErrorSpec{{Code: status}},
+		}
+		_, err := openapi.NewBuilder("Test", "1").Build([]*parser.OperationInfo{{Annotation: ann}}, nil)
+		if err == nil || !strings.Contains(err.Error(), "is also declared in errors") {
+			t.Fatalf("expected a conflicting status error, got %v", err)
 		}
 	}
 }

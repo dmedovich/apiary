@@ -9,9 +9,12 @@ import (
 
 func TestParse_ResponseMetadata(t *testing.T) {
 	op, ok := annotation.Parse([]string{
-		"apiary:operation POST /exports", "response: Job",
-		"response-status: 202", "response-content-type: application/vnd.example+json",
-		"content-type: multipart", "response-format: binary",
+		"apiary:operation POST /exports",
+		"response: Job",
+		"response-status: 202",
+		"response-content-type: application/vnd.example+json",
+		"content-type: multipart",
+		"response-format: binary",
 	})
 	if !ok || len(op.Warnings) != 0 {
 		t.Fatalf("expected valid annotations: %+v", op)
@@ -19,6 +22,17 @@ func TestParse_ResponseMetadata(t *testing.T) {
 	if op.ResponseStatus != 202 || op.Response != "Job" || op.ResponseFormat != "binary" ||
 		op.ResponseContentType != "application/vnd.example+json" || op.ContentType != "multipart/form-data" {
 		t.Fatalf("unexpected response metadata: %+v", op)
+	}
+}
+
+func TestParse_ResponseKeyTypoWarns(t *testing.T) {
+	for _, key := range []string{"response-statu", "response-content-typ", "response-formt"} {
+		t.Run(key, func(t *testing.T) {
+			op, ok := annotation.Parse([]string{"apiary:operation GET /exports", key + ": typo"})
+			if !ok || len(op.Warnings) != 1 || !strings.Contains(op.Warnings[0], key) {
+				t.Fatalf("expected warning naming %q, got %+v", key, op)
+			}
+		})
 	}
 }
 

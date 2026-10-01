@@ -83,7 +83,9 @@ func DownloadExport(w http.ResponseWriter, r *http.Request) { /* ... */ }
 Invalid status codes, media types, or formats produce warnings and are
 ignored. Currently `binary` is the only supported `response-format`.
 Statuses 204 and 205 must have no response body; generation fails if a
-response type or binary format is specified for them.
+response type or binary format is specified for them. A success status cannot
+also appear in `errors:`; generation fails instead of replacing the success
+schema with an error schema.
 
 ## Error responses
 
