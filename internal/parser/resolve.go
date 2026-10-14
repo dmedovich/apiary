@@ -88,7 +88,7 @@ func (p *Parser) resolveAnnotationType(pkg *packages.Package, file *ast.File, po
 	if ref.IsSlice {
 		return &TypeRef{Name: "array", IsSlice: true, Elem: resolved}
 	}
-	resolved.IsPtr = ref.IsPtr
+	resolved.IsPtr = resolved.IsPtr || ref.IsPtr
 	return resolved
 }
 
@@ -153,7 +153,9 @@ func fileImportPath(file *ast.File, alias string) (string, bool) {
 }
 
 func (p *Parser) typeRef(t types.Type) *TypeRef {
-	switch u := t.(type) {
+	// Resolve alias chains without losing the target's named identity, which
+	// is needed to register components and recognize enums and external types.
+	switch u := types.Unalias(t).(type) {
 	case *types.Pointer:
 		inner := p.typeRef(u.Elem())
 		if inner != nil {
@@ -221,8 +223,9 @@ func (p *Parser) registerStruct(named *types.Named, st *types.Struct) string {
 }
 
 func (p *Parser) embeddedComponent(t types.Type) string {
+	t = types.Unalias(t)
 	if ptr, ok := t.(*types.Pointer); ok {
-		t = ptr.Elem()
+		t = types.Unalias(ptr.Elem())
 	}
 	named, ok := t.(*types.Named)
 	if !ok || !p.inModule(named) {

@@ -4,6 +4,18 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.3] - 2026-10-14
+
+### Fixed
+- Resolve Go type aliases to their target types, preserving response `$ref`s,
+  array item schemas, and component registration when apiary is built with
+  Go 1.27. Alias chains, embedded aliases, and pointer aliases in annotations
+  retain the target's schema and nullability.
+
+### Added
+- Regression coverage for alias-only responses and slices of aliases, plus
+  CI testing on Go 1.26 and Go 1.27.
+
 ## [1.2.0] - 2026-08-08
 
 ### Fixed
